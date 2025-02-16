@@ -1,45 +1,68 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import { Platform } from 'react-native';
+import { Tabs } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import { Platform } from "react-native";
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
+const RootLayout = () => {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
+        tabBarStyle: {
+          height: Platform.OS === "ios" ? 90 : 60,
+          paddingBottom: Platform.OS === "ios" ? 30 : 10,
+          paddingTop: 10,
+          backgroundColor: "white",
+          borderTopWidth: 1,
+          borderTopColor: "#f1f1f1",
+          elevation: 0,
+        },
+        tabBarActiveTintColor: "#41f3ea",
+        tabBarInactiveTintColor: "#94a3b8",
+        tabBarHideOnKeyboard: true,
+        animation: "fade",
+      }}
+    >
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="home" color={color} size={size} />
+          ),
+          title: "",
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="leave"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="airline-seat-individual-suite" color={color} size={size} />
+          ),
+          title: "",
+        }}
+      />
+      <Tabs.Screen
+        name="appointment"
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="calendar-month" color={color} size={size} />
+          ),
+          title: "",
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="person-outline" color={color} size={size} />
+          ),
+          title: "",
         }}
       />
     </Tabs>
   );
-}
+};
+
+export default RootLayout;
