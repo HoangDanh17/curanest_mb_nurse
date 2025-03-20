@@ -29,10 +29,6 @@ const screenConfigs: Record<string, NativeStackNavigationOptions> = {
     ...commonHeaderOptions,
     headerTitle: "Hồ sơ điều dưỡng",
   },
-  payroll: {
-    ...commonHeaderOptions,
-    headerTitle: "Lương và thưởng",
-  },
 };
 
 const ProfileLayout = () => {
@@ -49,7 +45,6 @@ const ProfileLayout = () => {
         name="appointment-history"
         options={screenConfigs["appointment-history"]}
       />
-      <Stack.Screen name="payroll" options={screenConfigs.payroll} />
       <Stack.Screen
         name="nurse-profile"
         options={screenConfigs["nurse-profile"]}

@@ -51,10 +51,13 @@ export default function RootLayout() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(profile)" options={{ headerShown: false }} />
-
       <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
       <Stack.Screen
         name="detail-appointment/[id]"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="report-appointment/[id]"
         options={{ headerShown: false }}
       />
       <Stack.Screen name="index" options={{ headerShown: false }} />

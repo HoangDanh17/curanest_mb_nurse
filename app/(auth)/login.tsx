@@ -159,7 +159,9 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [errors, setErrors] = useState<{ phone?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ phone?: string; password?: string }>(
+    {}
+  );
 
   useEffect(() => {
     fadeIn.value = withTiming(1, { duration: 1000 });
@@ -201,7 +203,7 @@ const LoginScreen: React.FC = () => {
         "phone-number": phone,
       };
       const response = await authApiRequest.login(form);
-      
+
       const userRole = response.payload.data["account-info"].role;
       if (userRole !== "nurse") {
         Alert.alert(

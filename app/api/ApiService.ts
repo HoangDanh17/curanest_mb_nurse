@@ -13,7 +13,7 @@ interface Ward {
 
 class ApiService {
   private static instance: ApiService;
-  private hcmCode: string = "79"; // Mã TP.HCM
+  private hcmCode: string = "79"; 
 
   private constructor() {}
 

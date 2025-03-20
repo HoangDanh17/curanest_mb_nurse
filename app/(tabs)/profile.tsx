@@ -1,15 +1,78 @@
-import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import MenuItem from "@/components/MenuItem";
 import { Entypo } from "@expo/vector-icons";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const ProfileScreen = () => {
+interface UserInfo {
+  "full-name": string;
+}
+
+const ProfileScreen: React.FC = () => {
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const value = await AsyncStorage.getItem("userInfo");
+        if (value) {
+          const parsedValue: UserInfo = JSON.parse(value);
+          setUserInfo(parsedValue);
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
+
+  if (!userInfo) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+  const handleLogout = async () => {
+    Alert.alert(
+      "Xác nhận đăng xuất",
+      "Bạn có chắc chắn muốn đăng xuất?",
+      [
+        {
+          text: "Hủy",
+          style: "cancel",
+        },
+        {
+          text: "Đồng ý",
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              router.replace("/(auth)/login");
+            } catch (error) {
+              console.error("Đăng xuất thất bại", error);
+              Alert.alert("Lỗi", "Không thể đăng xuất. Vui lòng thử lại.");
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
   return (
     <ScrollView className="bg-white">
       <View className="p-4 flex-1">
         <View className="flex flex-row items-center justify-between">
           <View>
-            <Text className="text-xl font-bold">Danh Tăng</Text>
+            <Text className="text-xl font-bold">{userInfo["full-name"]}</Text>
             <Text className="text-gray-500">Tài khoản cá nhân</Text>
           </View>
           <Image
@@ -26,11 +89,6 @@ const ProfileScreen = () => {
             title="Hồ sơ"
             handlePress={() => router.push("/(profile)/nurse-profile")}
           />
-          <MenuItem
-            iconName="attach-money"
-            title="Lương thưởng và hoa hồng"
-            handlePress={() => router.push("/(profile)/payroll")}
-          />
           <MenuItem iconName="event-note" title="Lịch sử nghỉ phép" />
           <MenuItem
             iconName="event"
@@ -43,9 +101,11 @@ const ProfileScreen = () => {
             handlePress={() => router.push("/(profile)/feedback")}
           />
         </View>
-
         <View className="mt-12 p-4 border border-gray-300 rounded-2xl">
-          <TouchableOpacity className="flex flex-row items-center justify-between w-full p-3">
+          <TouchableOpacity
+            className="flex flex-row items-center justify-between w-full p-3"
+            onPress={handleLogout}
+          >
             <View className="flex flex-row items-center gap-2">
               <Entypo
                 name="log-out"

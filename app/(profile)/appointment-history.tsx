@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   View,
@@ -45,7 +46,7 @@ const AppointmentHistoryScreen = () => {
     value: number | null;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false); 
+  const [refreshing, setRefreshing] = useState(false);
 
   const filteredFeedback = feedbackData.filter((feedback) => {
     return (
@@ -116,18 +117,18 @@ const AppointmentHistoryScreen = () => {
       ) : (
         <ScrollView
           className="p-2"
-          showsVerticalScrollIndicator={false} 
-          showsHorizontalScrollIndicator={false} 
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
           fadingEdgeLength={0}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
               colors={["#0000ff"]}
-              tintColor="#0000ff" 
+              tintColor="#0000ff"
             />
           }
-          contentContainerStyle={{ paddingBottom: 20 }} 
+          contentContainerStyle={{ paddingBottom: 20 }}
         >
           {!isLoading && filteredFeedback.length === 0 ? (
             <View className="flex justify-center items-center my-4">
@@ -141,7 +142,6 @@ const AppointmentHistoryScreen = () => {
                 key={feedback.id}
                 className="mb-4 border border-pink-100 rounded-xl bg-white"
               >
-                {/* Header section with avatar and name */}
                 <View className="p-4 flex-row justify-between items-start">
                   <View className="w-16 h-16 bg-pink-100 rounded-xl mr-4 items-center justify-center">
                     <Text className="text-2xl">A</Text>
@@ -186,7 +186,6 @@ const AppointmentHistoryScreen = () => {
                     </View>
                   </View>
 
-                  {/* Services section */}
                   <View className="mt-2">
                     <Text className="text-gray-600 mb-2">Dịch vụ:</Text>
                     <View className="flex-row flex-wrap gap-2">
@@ -199,7 +198,9 @@ const AppointmentHistoryScreen = () => {
                         >
                           <Text
                             className={
-                              index % 2 === 0 ? "text-pink-700" : "text-orange-700"
+                              index % 2 === 0
+                                ? "text-pink-700"
+                                : "text-orange-700"
                             }
                           >
                             {service}
@@ -229,7 +230,7 @@ const AppointmentHistoryScreen = () => {
                   <TouchableOpacity
                     className="bg-orange-100 px-4 py-2 rounded-lg"
                     onPress={() => {
-                      /* Handle press */
+                      router.push("/detail-appointment/[id]");
                     }}
                   >
                     <Text className="text-orange-700">Xem chi tiết lịch</Text>

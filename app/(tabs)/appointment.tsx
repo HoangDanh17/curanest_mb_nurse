@@ -23,7 +23,7 @@ export interface Appointment {
 }
 
 const schedule: { [key: string]: Appointment[] } = {
-  "2025-02-04": [
+  "2025-03-08": [
     {
       id: 1,
       time: "08:00",
@@ -45,7 +45,7 @@ const schedule: { [key: string]: Appointment[] } = {
       duration: 60,
     },
   ],
-  "2025-02-05": [
+  "2025-03-09": [
     {
       id: 3,
       time: "08:00",

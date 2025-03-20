@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "curanest_mb_nurse",
+    "name": "Curanest",
     "slug": "curanest_mb_nurse",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo-app.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

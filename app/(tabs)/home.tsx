@@ -138,8 +138,6 @@ const HomeScreen = () => {
             </Text>
           )}
         />
-
-        <View className="mb-16"></View>
       </ScrollView>
     </SafeAreaView>
   );
