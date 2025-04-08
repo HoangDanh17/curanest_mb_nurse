@@ -1,3 +1,4 @@
+import { useProvider } from "@/app/provider";
 import HeaderBack from "@/components/HeaderBack";
 import React, { useState, useEffect } from "react";
 import {
@@ -7,16 +8,17 @@ import {
   FlatList,
   TextInput,
 } from "react-native";
+import { router } from "expo-router"; // Đảm bảo import router
 
 interface Report {
   id: number;
   date: string;
   title: string;
-  nurseNote: string; // Dummy data: Note của điều dưỡng
-  customerNote: string; // Dummy data: Note của khách hàng
-  time: number; // Dummy data: Thời gian (phút)
-  numberOfTimes: number; // Dummy data: Số lần
-  nurseRemark?: string; // Lưu ý do điều dưỡng nhập (input)
+  nurseNote: string;
+  customerNote: string;
+  time: number;
+  numberOfTimes: number;
+  nurseRemark?: string;
 }
 
 interface ReportAppointmentItemProps {
@@ -35,14 +37,12 @@ const ReportAppointmentItem: React.FC<ReportAppointmentItemProps> = ({
   );
   const [isTitleCompleted, setIsTitleCompleted] = useState<boolean>(false);
 
-  // Khi nurseRemark hoặc trạng thái checkbox thay đổi, thông báo cho component cha nếu cần
   useEffect(() => {
     onReportUpdate && onReportUpdate(report.id, isTitleCompleted);
   }, [nurseRemark, isTitleCompleted]);
 
   return (
     <View className="mb-6">
-      {/* Header với tiêu đề và checkbox, background thay đổi khi tick */}
       <View
         className={`flex-row items-center justify-between p-4 rounded-lg shadow ${
           isTitleCompleted ? "bg-green-500" : "bg-[#64CBDD]"
@@ -61,7 +61,6 @@ const ReportAppointmentItem: React.FC<ReportAppointmentItemProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Nội dung báo cáo */}
       <View className="bg-white rounded-lg shadow p-4">
         <View className="flex-row flex-wrap justify-between p-2 gap-4">
           <View className="gap-1">
@@ -91,23 +90,14 @@ const ReportAppointmentItem: React.FC<ReportAppointmentItemProps> = ({
             </Text>
           </View>
         </View>
-        <Text className="font-psemibold ml-2 my-2">
-          Ghi chú của điều dưỡng:{" "}
-        </Text>
-        <TextInput
-          value={nurseRemark}
-          onChangeText={setNurseRemark}
-          style={{ textAlignVertical: "top", textAlign: "left" }}
-          placeholder="Nhập lưu ý của điều dưỡng"
-          multiline
-          className="border border-gray-300  p-2 mt-2 h-24 text-base text-left font-psemibold text-gray-500 rounded-2xl"
-        />
       </View>
     </View>
   );
 };
 
 const ReportAppointment: React.FC = () => {
+  const { isFinish, setIsFinish } = useProvider();
+
   const reports: Report[] = [
     {
       id: 1,
@@ -146,7 +136,17 @@ const ReportAppointment: React.FC = () => {
   >({});
 
   const handleReportUpdate = (reportId: number, isCompleted: boolean) => {
-    setReportCompletion((prev) => ({ ...prev, [reportId]: isCompleted }));
+    setReportCompletion((prev) => {
+      const newCompletion = { ...prev, [reportId]: isCompleted };
+
+      const allCompleted = reports.every(
+        (report) => newCompletion[report.id] === true
+      );
+
+      setIsFinish(allCompleted);
+
+      return newCompletion;
+    });
   };
 
   return (
@@ -156,6 +156,16 @@ const ReportAppointment: React.FC = () => {
         ListHeaderComponent={
           <View className="m-4 ml-0 mt-2">
             <HeaderBack />
+          </View>
+        }
+        ListFooterComponent={
+          <View className="flex-row justify-end mb-6">
+            <TouchableOpacity
+              className="px-6 py-3 bg-[#64CBDD] rounded-lg"
+              onPress={() => router.back()}
+            >
+              <Text className="text-white font-pmedium">Quay lại</Text>
+            </TouchableOpacity>
           </View>
         }
         keyExtractor={(item) => item.id.toString()}

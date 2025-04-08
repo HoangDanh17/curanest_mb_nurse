@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
@@ -17,7 +18,8 @@ const feedbackData = [
     rating: 5,
     date: "12/11/2024 9:54",
     comment: "Điều dưỡng rất chu đáo và giàu kinh nghiệm.",
-    avatar: "https://i.ytimg.com/vi/SzpzF5PKb3c/maxresdefault.jpg",
+    avatar:
+      "https://t3.ftcdn.net/jpg/04/97/68/08/360_F_497680856_nWYZ4OrUdRPAhcPYgaYDxKGV1jHqLjZL.jpg",
     services: ["Vệ sinh", "Thay băng", "Tư vấn dinh dưỡng"],
   },
   {
@@ -26,7 +28,8 @@ const feedbackData = [
     rating: 4,
     date: "13/11/2024 10:30",
     comment: "Dịch vụ tốt, nhân viên nhiệt tình.",
-    avatar: "https://i.ytimg.com/vi/SzpzF5PKb3c/maxresdefault.jpg",
+    avatar:
+      "https://t3.ftcdn.net/jpg/04/97/68/08/360_F_497680856_nWYZ4OrUdRPAhcPYgaYDxKGV1jHqLjZL.jpg",
     services: ["Phẩu thuật thẩm mĩ", "Chăm sóc da"],
   },
   {
@@ -35,42 +38,45 @@ const feedbackData = [
     rating: 3,
     date: "14/11/2024 11:15",
     comment: "Hài lòng với dịch vụ, nhưng giá hơi cao.",
-    avatar: "https://i.ytimg.com/vi/SzpzF5PKb3c/maxresdefault.jpg",
+    avatar:
+      "https://t3.ftcdn.net/jpg/04/97/68/08/360_F_497680856_nWYZ4OrUdRPAhcPYgaYDxKGV1jHqLjZL.jpg",
     services: ["Vệ sinh", "Thay băng", "Tư vấn dinh dưỡng", "Chăm sóc da"],
   },
 ];
 
 const AppointmentHistoryScreen = () => {
-  const [ratingFilter, setRatingFilter] = useState<{
+  const [dateFilter, setDateFilter] = useState<{
     label: string;
-    value: number | null;
+    value: string | null;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Tạo danh sách các ngày duy nhất từ feedbackData
+  const uniqueDates = Array.from(
+    new Set(feedbackData.map((feedback) => feedback.date.split(" ")[0]))
+  );
+  const dateOptions = [
+    { label: "Tất cả ngày", value: null },
+    ...uniqueDates.map((date) => ({ label: date, value: date })),
+  ];
+
+  // Lọc dữ liệu theo ngày
   const filteredFeedback = feedbackData.filter((feedback) => {
+    const feedbackDate = feedback.date.split(" ")[0]; // Lấy phần ngày (bỏ giờ)
     return (
-      ratingFilter === null ||
-      ratingFilter.value === null ||
-      feedback.rating === ratingFilter.value
+      dateFilter === null ||
+      dateFilter.value === null ||
+      feedbackDate === dateFilter.value
     );
   });
 
-  const ratingOptions = [
-    { label: "All Ratings", value: null },
-    { label: "★ 1", value: 1 },
-    { label: "★ 2", value: 2 },
-    { label: "★ 3", value: 3 },
-    { label: "★ 4", value: 4 },
-    { label: "★ 5", value: 5 },
-  ];
-
   const handleFilterChange = (item: {
     label: string;
-    value: number | null;
+    value: string | null;
   }) => {
     setIsLoading(true);
-    setRatingFilter(item);
+    setDateFilter(item);
     setTimeout(() => {
       setIsLoading(false);
     }, 1000);
@@ -87,11 +93,11 @@ const AppointmentHistoryScreen = () => {
     <View className="flex-1 p-4 bg-white">
       <View className="flex-row justify-end mb-4">
         <Dropdown
-          data={ratingOptions}
+          data={dateOptions}
           labelField="label"
           valueField="value"
-          placeholder="Lọc theo ★"
-          value={ratingFilter}
+          placeholder="Lọc theo ngày"
+          value={dateFilter}
           onChange={handleFilterChange}
           style={{
             borderWidth: 1,
@@ -133,108 +139,34 @@ const AppointmentHistoryScreen = () => {
           {!isLoading && filteredFeedback.length === 0 ? (
             <View className="flex justify-center items-center my-4">
               <Text className="text-lg text-gray-600">
-                Không có đánh giá nào phù hợp.
+                Không có lịch sử nào phù hợp.
               </Text>
             </View>
           ) : (
             filteredFeedback.map((feedback) => (
               <View
                 key={feedback.id}
-                className="mb-4 border border-pink-100 rounded-xl bg-white"
+                className="mb-4 border border-gray-200 rounded-xl bg-white p-4"
               >
-                <View className="p-4 flex-row justify-between items-start">
-                  <View className="w-16 h-16 bg-pink-100 rounded-xl mr-4 items-center justify-center">
-                    <Text className="text-2xl">A</Text>
-                  </View>
-
-                  <View className="flex-1">
-                    <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center">
+                  <View className="flex-1 flex-row justify-between items-center">
+                    <View>
                       <Text className="text-lg font-medium">
                         {feedback.name}
                       </Text>
-                      <View className="bg-green-100 px-2 py-1 rounded-xl">
-                        <Text className="text-green-700 text-sm font-psemibold">
-                          Hoàn thành
-                        </Text>
-                      </View>
-                    </View>
-
-                    <Text className="text-gray-500 text-sm mt-1">
-                      098575456
-                    </Text>
-                  </View>
-                </View>
-
-                <View className="px-4 py-3 border-t border-gray-200">
-                  <View className="flex-col justify-between gap-2">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-gray-600 flex-shrink-0">
-                        Lịch đặt ngày:{" "}
-                      </Text>
-                      <Text className="text-gray-800 flex-1 text-right">
-                        {feedback.date}
+                      <Text className="text-gray-600 mt-1">
+                        Ngày đặt: {feedback.date}
                       </Text>
                     </View>
-
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-gray-600 flex-shrink-0">
-                        Giá tiền:{" "}
-                      </Text>
-                      <Text className="text-orange-500 font-medium flex-1 text-right">
-                        500,000 VND
-                      </Text>
-                    </View>
+                    <TouchableOpacity
+                      className="bg-teal-400 px-4 py-2 rounded-lg"
+                      onPress={() => {
+                        router.push("/detail-appointment/[id]");
+                      }}
+                    >
+                      <Text className="text-white font-psemibold">Chi tiết</Text>
+                    </TouchableOpacity>
                   </View>
-
-                  <View className="mt-2">
-                    <Text className="text-gray-600 mb-2">Dịch vụ:</Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {feedback.services.map((service, index) => (
-                        <View
-                          key={index}
-                          className={`px-3 py-1 rounded-full ${
-                            index % 2 === 0 ? "bg-pink-100" : "bg-orange-100"
-                          }`}
-                        >
-                          <Text
-                            className={
-                              index % 2 === 0
-                                ? "text-pink-700"
-                                : "text-orange-700"
-                            }
-                          >
-                            {service}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-
-                {/* Rating section */}
-                <View className="p-4 border-t border-gray-200">
-                  <Text className="text-gray-700 flex-row items-center">
-                    Đánh giá:{" "}
-                    <Text className="text-yellow-400 text-lg">
-                      {"★".repeat(feedback.rating)}
-                      {"☆".repeat(5 - feedback.rating)}
-                    </Text>
-                  </Text>
-                  <View className="mt-1">
-                    <Text className="text-gray-600">{feedback.comment}</Text>
-                  </View>
-                </View>
-
-                {/* Button section */}
-                <View className="p-4 border-t border-gray-200 flex items-center">
-                  <TouchableOpacity
-                    className="bg-orange-100 px-4 py-2 rounded-lg"
-                    onPress={() => {
-                      router.push("/detail-appointment/[id]");
-                    }}
-                  >
-                    <Text className="text-orange-700">Xem chi tiết lịch</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
             ))

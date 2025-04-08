@@ -1,15 +1,11 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
 import "@/styles/global.css";
+import Provider from "@/app/provider";
+import { StatusBar } from "react-native";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,25 +38,32 @@ export default function RootLayout() {
     return null;
   }
   return (
-    <Stack
-      screenOptions={{
-        animation: "fade",
-        presentation: "modal",
-        animationDuration: 200,
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(profile)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="detail-appointment/[id]"
-        options={{ headerShown: false }}
+    <Provider>
+      <Stack
+        screenOptions={{
+          animation: "fade",
+          presentation: "modal",
+          animationDuration: 200,
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(profile)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="detail-appointment/[id]"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="report-appointment/[id]"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+      </Stack>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle="dark-content"
       />
-      <Stack.Screen
-        name="report-appointment/[id]"
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-    </Stack>
+    </Provider>
   );
 }

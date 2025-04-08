@@ -11,8 +11,6 @@ const RootLayout = () => {
           paddingBottom: Platform.OS === "ios" ? 30 : 10,
           paddingTop: 10,
           backgroundColor: "white",
-          borderTopWidth: 1,
-          borderTopColor: "#f1f1f1",
           elevation: 0,
         },
         tabBarActiveTintColor: "#41f3ea",
@@ -27,16 +25,6 @@ const RootLayout = () => {
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" color={color} size={size} />
-          ),
-          title: "",
-        }}
-      />
-      <Tabs.Screen
-        name="leave"
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="airline-seat-individual-suite" color={color} size={size} />
           ),
           title: "",
         }}

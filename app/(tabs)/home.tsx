@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import Logo from "@/assets/images/logo-app.png";
 import WelcomeImage from "@/assets/images/homepage.png";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { UserInfo } from "@/app/(tabs)/profile";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -42,7 +44,23 @@ const todayAppointments = [
 
 const HomeScreen = () => {
   const [loading, setLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const value = await AsyncStorage.getItem("userInfo");
+        if (value) {
+          const parsedValue: UserInfo = JSON.parse(value);
+          setUserInfo(parsedValue);
+        }
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
@@ -94,7 +112,9 @@ const HomeScreen = () => {
             <Text className="text-md font-psemibold text-gray-400">
               Chào mừng trở lại
             </Text>
-            <Text className="text-lg font-pbold">0789456</Text>
+            <Text className="text-lg font-pbold text-teal-400">
+              {userInfo?.["full-name"]}
+            </Text>
           </View>
           <View>
             <Image
@@ -114,16 +134,18 @@ const HomeScreen = () => {
             style={{
               width: "100%",
               height: height * 0.25,
-              borderTopLeftRadius: 30,
-              borderBottomRightRadius: 30,
+              borderTopLeftRadius: 70,
+              borderBottomRightRadius: 70,
               marginTop: -25,
             }}
-            className="shadow-xl"
+            className="shadow-2xl"
             resizeMode="contain"
           />
         </View>
         <View className="flex flex-row items-center justify-between mx-4 mt-4">
-          <Text className="text-2xl font-pbold mb-2">Lịch hẹn hôm nay</Text>
+          <Text className="text-2xl font-pbold mb-2 text-teal-400">
+            Lịch hẹn hôm nay
+          </Text>
         </View>
 
         <FlatList

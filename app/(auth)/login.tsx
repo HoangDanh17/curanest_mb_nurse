@@ -205,7 +205,7 @@ const LoginScreen: React.FC = () => {
       const response = await authApiRequest.login(form);
 
       const userRole = response.payload.data["account-info"].role;
-      if (userRole !== "nurse") {
+      if (userRole === "relatives") {
         Alert.alert(
           "Không được phép truy cập",
           "Ứng dụng này chỉ dành cho điều dưỡng."

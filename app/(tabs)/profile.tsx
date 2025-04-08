@@ -11,9 +11,13 @@ import MenuItem from "@/components/MenuItem";
 import { Entypo } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-interface UserInfo {
+import Ava from "@/assets/images/welcome.png";
+export interface UserInfo {
+  id: string;
   "full-name": string;
+  email: string;
+  "phone-number": string;
+  role: string;
 }
 
 const ProfileScreen: React.FC = () => {
@@ -73,14 +77,9 @@ const ProfileScreen: React.FC = () => {
         <View className="flex flex-row items-center justify-between">
           <View>
             <Text className="text-xl font-bold">{userInfo["full-name"]}</Text>
-            <Text className="text-gray-500">Tài khoản cá nhân</Text>
+            <Text className="text-gray-500">{userInfo["phone-number"]}</Text>
           </View>
-          <Image
-            source={{
-              uri: "https://pantravel.vn/wp-content/uploads/2023/11/ngon-nui-thieng-cua-nhat-ban.jpg",
-            }}
-            className="w-20 h-20 rounded-full"
-          />
+          <Image source={Ava} className="w-20 h-20 rounded-full" />
         </View>
 
         <View className="mt-6 gap-6">
@@ -89,7 +88,6 @@ const ProfileScreen: React.FC = () => {
             title="Hồ sơ"
             handlePress={() => router.push("/(profile)/nurse-profile")}
           />
-          <MenuItem iconName="event-note" title="Lịch sử nghỉ phép" />
           <MenuItem
             iconName="event"
             title="Lịch sử lịch hẹn"
