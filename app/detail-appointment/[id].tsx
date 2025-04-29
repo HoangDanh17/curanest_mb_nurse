@@ -6,39 +6,80 @@ import {
   TextInput,
   Modal,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import HeaderBack from "@/components/HeaderBack";
-import { router } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useProvider } from "@/app/provider";
+import { AppointmentDetail } from "@/types/appointment";
+import appointmentApiRequest from "@/app/api/appointmentApi";
+import { addMinutes, format } from "date-fns";
+import { Patient } from "@/types/patient";
+import patientApiRequest from "@/app/api/patientApi";
 
 const DetailAppointmentScreen = () => {
   const { isFinish } = useProvider();
+  const { id, packageId, patientId, date, status } = useLocalSearchParams();
   const [reportText, setReportText] = useState<string>("");
-  const [isModalVisible, setIsModalVisible] = useState<boolean>(false); // State cho modal
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const [appointments, setAppointments] = useState<AppointmentDetail>();
+  const [patientList, setPatientList] = useState<Patient>();
 
-  const services = ["Khám tổng quát", "Xét nghiệm máu", "Chụp X-quang"];
-  const status = "in_progress";
+  async function fetchPatientList() {
+    try {
+      const response = await patientApiRequest.getPatient(String(patientId));
+      setPatientList(response.payload.data);
+    } catch (error) {
+      console.error("Error fetching patient list:", error);
+    }
+  }
+
+  async function fetchAppointmentDetail() {
+    try {
+      const response = await appointmentApiRequest.getAppointmentDetail(
+        String(packageId),
+        String(date)
+      );
+      setAppointments(response.payload.data);
+    } catch (error) {
+      console.error("Error fetching patient list:", error);
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchAppointmentDetail();
+      if (patientId) {
+        fetchPatientList();
+      }
+    }, [])
+  );
 
   const getStatusStyle = (status: string) => {
     switch (status) {
       case "upcoming":
         return {
-          backgroundColor: "bg-yellow-100",
-          textColor: "text-yellow-800",
-          text: "Sắp diễn ra",
+          backgroundColor: "bg-amber-100",
+          textColor: "text-amber-800",
+          text: "Sắp tới",
         };
-      case "in_progress":
+      case "confirmed":
         return {
-          backgroundColor: "bg-blue-100",
-          textColor: "text-blue-800",
-          text: "Đang thực hiện",
+          backgroundColor: "bg-indigo-100",
+          textColor: "text-indigo-800",
+          text: "Đã xác nhận",
         };
-      case "finish":
+      case "success":
         return {
-          backgroundColor: "bg-green-100",
-          textColor: "text-green-800",
+          backgroundColor: "bg-emerald-100",
+          textColor: "text-emerald-800",
           text: "Hoàn thành",
+        };
+      case "waiting":
+        return {
+          backgroundColor: "bg-red-100",
+          textColor: "text-red-800",
+          text: "Chờ xác nhận",
         };
       default:
         return {
@@ -49,85 +90,32 @@ const DetailAppointmentScreen = () => {
     }
   };
 
-  const statusStyle = getStatusStyle(status);
+  const statusStyle = getStatusStyle(String(status));
+  const formattedDate = format(new Date(String(date)), "dd/MM/yyyy");
+  const formattedTime = format(new Date(String(date)), "hh:mm a");
+  const totalDuration = appointments?.tasks
+    ? appointments.tasks.reduce((sum, task) => sum + task["est-duration"], 0)
+    : 0;
 
-  const patient = {
-    id: "01958161-2764-76ee-8f92-053330957f6f",
-    fullName: "Lê Mai Đào",
-    dob: "1931-09-14",
-    phoneNumber: "0950485968",
-    address: "64 Đường Hoa Mai",
-    ward: "Phường 2",
-    district: "Quận Phú Nhuận",
-    city: "Hồ Chí Minh",
-    descPathology: "Đau mỏi đầu gối, khó khăn trong việc di chuyển",
-    noteForNurse: "Cần người dìu dắt trong việc đi lại",
+  const calculateEndTime = () => {
+    const endTime = addMinutes(String(date), totalDuration);
+    return format(endTime, "HH:mm a");
   };
 
-  const servicePackages = [
-    {
-      name: "Chăm sóc sức khỏe tại nhà",
-      services: [
-        {
-          id: 1,
-          name: "Chăm sóc bệnh nhân tại nhà",
-          price: 200000,
-          type: "basic",
-          duration: 60,
-          unit: 1,
-        },
-        {
-          id: 2,
-          name: "Chăm sóc sau phẫu thuật",
-          price: 250000,
-          type: "premium",
-          duration: 90,
-          unit: 2,
-        },
-        {
-          id: 3,
-          name: "Chăm sóc người cao tuổi",
-          price: 180000,
-          type: "basic",
-          duration: 120,
-          unit: 3,
-        },
-      ],
-    },
-  ];
-
-  const totalPrice = servicePackages.reduce(
-    (sum, pkg) =>
-      sum + pkg.services.reduce((pkgSum, service) => pkgSum + service.price, 0),
-    0
-  );
-
-  const totalDuration = servicePackages.reduce(
-    (sum, pkg) =>
-      sum +
-      pkg.services.reduce((pkgSum, service) => pkgSum + service.duration, 0),
-    0
-  );
-
-  // Hàm xử lý khi nhấn nút Submit (Xác nhận hoàn thành)
   const handleSubmitReport = () => {
-    setIsModalVisible(true); // Hiển thị modal xác nhận
+    setIsModalVisible(true);
   };
 
-  // Hàm xác nhận trong modal
   const confirmSubmit = () => {
-    console.log("Báo cáo đã được gửi:", reportText);
-    setReportText(""); // Reset ô input sau khi xác nhận
-    setIsModalVisible(false); // Đóng modal
-    // Bạn có thể thêm logic gửi báo cáo lên server ở đây
+    setReportText("");
+    setIsModalVisible(false);
   };
 
   return (
-    <SafeAreaView>
-      <ScrollView className="bg-white h-full p-4">
+    <SafeAreaView className="bg-white p-4">
+      <ScrollView showsVerticalScrollIndicator={false}>
         <HeaderBack />
 
-        {/* Thông tin bệnh nhân */}
         <View className="mt-4 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
           <Text className="text-xl font-psemibold mb-4 text-blue-600 text-center">
             Thông tin bệnh nhân
@@ -136,37 +124,46 @@ const DetailAppointmentScreen = () => {
             <View className="flex-row justify-between items-center border-b border-gray-200 pb-2">
               <Text className="font-psemibold text-gray-700">Họ và tên:</Text>
               <Text className="text-gray-500 font-pmedium break-words">
-                {patient.fullName}
+                {patientList?.["full-name"]}
               </Text>
             </View>
             <View className="flex-row justify-between items-center border-b border-gray-200 pb-2">
               <Text className="font-psemibold text-gray-700">Ngày sinh:</Text>
               <Text className="text-gray-500 font-pmedium break-words">
-                {patient.dob}
+                {patientList?.dob
+                  ? format(new Date(patientList.dob), "dd/MM/yyyy")
+                  : "N/A"}
               </Text>
             </View>
             <View className="flex-row justify-between items-center border-b border-gray-200 pb-2">
-              <Text className="font-psemibold text-gray-700">Số điện thoại:</Text>
+              <Text className="font-psemibold text-gray-700">
+                Số điện thoại:
+              </Text>
               <Text className="text-gray-500 font-pmedium break-words">
-                {patient.phoneNumber}
+                {patientList?.["phone-number"]}
               </Text>
             </View>
             <View className="flex-col border-b border-gray-200 pb-2">
               <Text className="font-psemibold text-gray-700">Địa chỉ:</Text>
               <Text className="text-gray-500 font-pmedium break-words">
-                {patient.address}, {patient.ward}, {patient.district}, {patient.city}
+                {patientList?.address}, {patientList?.ward},{" "}
+                {patientList?.district}, {patientList?.city}
               </Text>
             </View>
             <View className="flex-col border-b border-gray-200 pb-2">
-              <Text className="font-psemibold text-gray-700">Mô tả bệnh lý:</Text>
+              <Text className="font-psemibold text-gray-700">
+                Mô tả bệnh lý:
+              </Text>
               <Text className="text-gray-500 font-pmedium break-words">
-                {patient.descPathology}
+                {patientList?.["desc-pathology"]}
               </Text>
             </View>
             <View className="flex-col border-b border-gray-200 pb-2">
-              <Text className="font-psemibold text-gray-700">Ghi chú cho điều dưỡng:</Text>
+              <Text className="font-psemibold text-gray-700">
+                Ghi chú cho điều dưỡng:
+              </Text>
               <Text className="text-gray-500 font-pmedium break-words">
-                {patient.noteForNurse}
+                {patientList?.["note-for-nurse"]}
               </Text>
             </View>
           </View>
@@ -174,58 +171,88 @@ const DetailAppointmentScreen = () => {
 
         <View className="mt-6 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
           <Text className="text-xl font-psemibold mb-4 text-blue-600 text-center">
-            Thông tin lịch hẹn - 04/01/2025
+            Thông tin lịch hẹn - {formattedDate}
           </Text>
           <View className="space-y-4 gap-4">
             <View className="flex-row justify-between items-center border-b border-gray-200 pb-2">
               <Text className="font-psemibold text-gray-700">Thời gian:</Text>
-              <Text className="text-gray-500 font-pmedium break-words">8:00 - 9:00</Text>
+              <Text className="text-gray-500 font-pmedium break-words">
+                {formattedTime} • {calculateEndTime()}
+              </Text>
             </View>
             <View className="flex-row justify-between items-center border-b border-gray-200 pb-2">
               <Text className="font-psemibold text-gray-700">Trạng thái:</Text>
-              <View className={`px-3 py-1 ${statusStyle.backgroundColor} rounded-full`}>
-                <Text className={`${statusStyle.textColor} font-pmedium break-words`}>
+              <View
+                className={`px-3 py-1 ${statusStyle.backgroundColor} rounded-full`}
+              >
+                <Text
+                  className={`${statusStyle.textColor} font-pmedium break-words`}
+                >
                   {statusStyle.text}
                 </Text>
               </View>
             </View>
-
-            {servicePackages.map((pkg, index) => (
-              <View key={index}>
-                <View className="flex-col justify-between">
-                  <Text className="font-psemibold text-gray-700">Gói dịch vụ:</Text>
-                  <Text className="text-blue-800 font-psemibold break-words">
-                    {pkg.name}
-                  </Text>
-                </View>
-                <View className="mt-2">
-                  {pkg.services.map((service) => (
-                    <View key={service.id} className="p-3 border-b border-gray-200">
-                      <Text className="text-gray-700 font-pmedium break-words">
-                        {service.name}
+            <View className="flex-row justify-between items-center border-b border-gray-200 pb-2">
+              <Text className="font-psemibold text-gray-700">Thanh toán:</Text>
+              <View
+                className={`px-3 py-1 ${
+                  appointments?.package["payment-status"] === "unpaid"
+                    ? "bg-amber-100"
+                    : "bg-emerald-100"
+                } rounded-full`}
+              >
+                <Text
+                  className={`${
+                    appointments?.package["payment-status"] === "unpaid"
+                      ? "text-amber-800"
+                      : "text-emerald-800"
+                  } font-pmedium`}
+                >
+                  {appointments?.package["payment-status"] === "unpaid"
+                    ? "Chưa thanh toán"
+                    : "Đã thanh toán"}
+                </Text>
+              </View>
+            </View>
+            <View>
+              <View className="flex-col justify-between">
+                <Text className="font-psemibold text-gray-700">
+                  Gói dịch vụ:
+                </Text>
+                <Text className="text-blue-800 font-psemibold break-words">
+                  {appointments?.package.name || "Chưa có dữ liệu"}
+                </Text>
+              </View>
+              <View className="mt-2">
+                {appointments?.tasks.map((service, index) => (
+                  <View
+                    key={service.id}
+                    className="p-3 border-b border-gray-200"
+                  >
+                    <Text className="text-gray-700 font-pbold break-words">
+                      {index + 1}. {service.name}
+                    </Text>
+                    <View className="flex-row flex-wrap justify-between">
+                      <Text className="text-gray-500 break-words">
+                        Thời gian: {service["est-duration"]} phút
                       </Text>
                       <Text className="text-gray-500 break-words">
-                        Giá: {service.price.toLocaleString()} VND
+                        x{service["total-unit"]} lần
                       </Text>
-                      <View className="flex-row flex-wrap justify-between">
-                        <Text className="text-gray-500 break-words">
-                          Thời gian: {service.duration} phút
-                        </Text>
-                        <Text className="text-gray-500 break-words">
-                          x{service.unit} lần
-                        </Text>
-                      </View>
                     </View>
-                  ))}
-                </View>
+                    <Text className="text-gray-500 break-words">
+                      Ghi chú: {service["client-note"]}
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ))}
-
+            </View>
             <View className="mt-4">
               <Text className="font-psemibold text-gray-700">
                 Tổng chi phí:{" "}
                 <Text className="text-blue-600 break-words">
-                  {totalPrice.toLocaleString()} VND
+                  {appointments?.package["total-fee"].toLocaleString() || "0"}{" "}
+                  VND
                 </Text>
               </Text>
               <Text className="font-psemibold text-gray-700">
@@ -238,20 +265,44 @@ const DetailAppointmentScreen = () => {
           </View>
         </View>
 
-        {/* Nút Báo Cáo */}
+        <TouchableOpacity
+          className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#bd4ada]`}
+          onPress={() =>
+            router.push({
+              pathname: "/report-appointment/[id]",
+              params: {
+                id: String(id),
+                listTask: JSON.stringify(appointments?.tasks),
+              },
+            })
+          }
+        >
+          <Text className="text-white font-pmedium text-center break-words items-center">
+            Bắt đầu đến điểm hẹn
+          </Text>
+        </TouchableOpacity>
+
         <View className="mt-6 mb-20">
           <TouchableOpacity
             className={`flex-1 px-6 py-4 rounded-lg ${
               isFinish ? "bg-green-500" : "bg-[#64CBDB]"
             }`}
-            onPress={() => router.push("/report-appointment/[id]")}
+            onPress={() =>
+              router.push({
+                pathname: "/report-appointment/[id]",
+                params: {
+                  id: String(id),
+                  listTask: JSON.stringify(appointments?.tasks),
+                },
+              })
+            }
           >
             <Text className="text-white font-pmedium text-center break-words items-center">
               📋 Báo cáo tiến trình task
             </Text>
           </TouchableOpacity>
 
-          {isFinish && (
+          {!isFinish && (
             <View className="mt-6">
               <Text className="text-lg font-psemibold text-gray-700 mb-2">
                 Báo cáo

@@ -30,7 +30,7 @@ const RootLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="appointment"
+        name="schedule"
         options={{
           headerShown: false,
           tabBarIcon: ({ color, size }) => (

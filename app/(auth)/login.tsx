@@ -48,6 +48,14 @@ interface InputProps {
   showPassword?: boolean;
 }
 
+export type UserData = {
+  id: string;
+  "full-name": string;
+  email: string;
+  "phone-number": string;
+  role: string;
+};
+
 const Input: React.FC<InputProps> = ({
   icon,
   placeholder,
@@ -118,7 +126,7 @@ const Input: React.FC<InputProps> = ({
             style={iconStyle}
           />
           <TextInput
-            className="flex-1 ml-3 font-psemibold text-gray-800"
+            className="flex-1 ml-3 font-psemibold text-gray-800 py-4"
             placeholder={placeholder}
             placeholderTextColor={error ? "#ff0000ae" : "#A0AEC0"}
             secureTextEntry={isPassword ? !showPassword : secureTextEntry}
@@ -217,10 +225,9 @@ const LoginScreen: React.FC = () => {
         "userInfo",
         JSON.stringify(response.payload.data["account-info"])
       );
-      await AsyncStorage.setItem(
-        "accessToken",
-        response.payload.data.token["access_token"]
-      );
+      
+      const token = response.payload.data.token["access_token"];
+      await AsyncStorage.setItem("accessToken", token);
       router.push("/(tabs)/home");
     } catch (error: any) {
       if (error.payload.error.reason_field) {

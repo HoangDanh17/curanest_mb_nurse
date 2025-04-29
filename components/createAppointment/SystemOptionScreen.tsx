@@ -1,11 +1,12 @@
-import { Appointment } from "@/app/(tabs)/appointment";
+import { Appointment } from "@/app/(tabs)/schedule";
 import React from "react";
 import {
   View,
   FlatList,
   Text,
-  ScrollView,
   ActivityIndicator,
+  Image,
+  Dimensions,
 } from "react-native";
 import Animated, {
   FadeIn,
@@ -14,7 +15,7 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-
+const { height } = Dimensions.get("window");
 interface SystemOptionScreenProps {
   currentMonthYear: string;
   dates: Date[];
@@ -81,6 +82,7 @@ const SystemOptionScreen: React.FC<SystemOptionScreenProps> = ({
           ref={flatListRef}
           data={dates}
           renderItem={renderDateItem}
+          removeClippedSubviews={false}
           keyExtractor={(item) => item.toDateString()}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -97,27 +99,33 @@ const SystemOptionScreen: React.FC<SystemOptionScreenProps> = ({
             </View>
           ) : getTimes(selectedDate).length === 0 ? (
             <View className="flex-1 justify-center items-center">
-              <Text className="text-xl text-gray-500 font-psemibold">
-                Không có lịch hẹn hôm nay
+              <Image
+                source={{
+                  uri: "https://cdni.iconscout.com/illustration/premium/thumb/schedule-appointment-illustration-download-in-svg-png-gif-file-formats--meeting-agenda-planner-employment-pack-business-illustrations-3757143.png",
+                }}
+                style={{
+                  width: "100%",
+                  height: height * 0.25,
+                }}
+                className="shadow-2xl"
+                resizeMode="contain"
+              />
+              <Text className="text-center text-lg text-gray-500 mt-4 font-psemibold">
+                Không có lịch hẹn nào hôm nay
               </Text>
             </View>
           ) : (
-            <Animated.View
-              entering={FadeIn.duration(500)}
-              style={scrollViewStyle}
-            >
-              <ScrollView contentContainerStyle={{ paddingHorizontal: 4 }}>
-                <View className="flex-col w-full">
-                  {getTimes(selectedDate).map((time) => (
-                    <View key={time.id} className="w-full p-2">
-                      {renderTimeItem({ item: time })}
-                    </View>
-                  ))}
-                </View>
-                <Text className="text-center text-3xl text-gray-200 font-pbold">
-                  ⦿
-                </Text>
-              </ScrollView>
+            <Animated.View style={[scrollViewStyle, { flex: 1 }]}>
+              <FlatList
+                data={getTimes(selectedDate)}
+                renderItem={renderTimeItem}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{
+                  paddingHorizontal: 4,
+                  paddingBottom: 20,
+                }}
+              />
             </Animated.View>
           )}
         </>

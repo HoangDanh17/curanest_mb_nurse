@@ -46,6 +46,7 @@ const ProfileScreen: React.FC = () => {
       </View>
     );
   }
+
   const handleLogout = async () => {
     Alert.alert(
       "Xác nhận đăng xuất",
@@ -71,13 +72,14 @@ const ProfileScreen: React.FC = () => {
       { cancelable: true }
     );
   };
+
   return (
     <ScrollView className="bg-white">
-      <View className="p-4 flex-1">
+      <View className="p-4 flex-1 mt-4">
         <View className="flex flex-row items-center justify-between">
           <View>
-            <Text className="text-xl font-bold">{userInfo["full-name"]}</Text>
-            <Text className="text-gray-500">{userInfo["phone-number"]}</Text>
+            <Text className="text-xl font-bold text-teal-400">{userInfo["full-name"]}</Text>
+            <Text className="text-gray-400 font-psemibold">{userInfo["phone-number"]}</Text>
           </View>
           <Image source={Ava} className="w-20 h-20 rounded-full" />
         </View>
