@@ -22,6 +22,7 @@ export interface Appointment {
   time: string;
   patientName: string;
   avatar: string;
+  locationGPS: string;
   status: Status;
   cuspackageId?: string;
   nurseId?: string;
@@ -98,6 +99,7 @@ const AppointmentScreen = () => {
           nurseId: item["nursing-id"],
           patientId: item["patient-id"],
           estDate: item["est-date"],
+          locationGPS: item["patient-lat-lng"],
           apiStatus: item.status,
         };
 
@@ -221,9 +223,9 @@ const AppointmentScreen = () => {
         nurseId: selectedAppointment.nurseId || String(data.id),
         patientId: selectedAppointment.patientId || "",
         date: selectedAppointment.estDate || "",
+        locationGPS: selectedAppointment.locationGPS,
         status: selectedAppointment.apiStatus || "",
       };
-      console.log("Navigating with params:", params);
       setTimeout(() => {
         router.push({
           pathname: "/detail-appointment/[id]",

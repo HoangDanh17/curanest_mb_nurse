@@ -198,6 +198,10 @@ export default function RootLayout() {
           name="report-appointment/[id]"
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="map"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="index" options={{ headerShown: false }} />
       </Stack>
       <StatusBar

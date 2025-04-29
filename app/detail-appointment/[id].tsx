@@ -19,7 +19,8 @@ import patientApiRequest from "@/app/api/patientApi";
 
 const DetailAppointmentScreen = () => {
   const { isFinish } = useProvider();
-  const { id, packageId, patientId, date, status } = useLocalSearchParams();
+  const { id, packageId, patientId, date, status, locationGPS } =
+    useLocalSearchParams();
   const [reportText, setReportText] = useState<string>("");
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [appointments, setAppointments] = useState<AppointmentDetail>();
@@ -279,6 +280,23 @@ const DetailAppointmentScreen = () => {
         >
           <Text className="text-white font-pmedium text-center break-words items-center">
             Bắt đầu đến điểm hẹn
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#4a92da]`}
+          onPress={() =>
+            router.push({
+              pathname: "/map",
+              params: {
+                id: String(id),
+                locationGPS: String(locationGPS),
+              },
+            })
+          }
+        >
+          <Text className="text-white font-pmedium text-center break-words items-center">
+            Map
           </Text>
         </TouchableOpacity>
 

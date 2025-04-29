@@ -51,9 +51,12 @@ export type AppointmentList = {
   "cuspackage-id": string;
   "nursing-id": string;
   "patient-id": string;
+  "patient-address": string;
+  "patient-lat-lng": string;
   "est-date": string;
   "act-date": string;
   status: Status;
+  "total-est-duration": number;
   "created-at": string;
 };
 
