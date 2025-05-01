@@ -4,6 +4,10 @@ import {
   AppointmentListRes,
   CreateAppointment,
   CreateAppointmentRes,
+  GetReportRes,
+  StartAppointment,
+  SubmitReport,
+  SubmitReportRes,
 } from "@/types/appointment";
 
 const appointmentApiRequest = {
@@ -25,6 +29,30 @@ const appointmentApiRequest = {
       `cuspackage?cus-package-id=${packageId}&est-date=${date}`,
       { apiPrefix: "appointment" }
     ),
+  startAppointment: (body: StartAppointment) =>
+    http.patch<CreateAppointmentRes>(
+      `appointments/${body["appointment-id"]}/update-status-upcoming?origin-code=${body["origin-code"]}`,
+      body,
+      {
+        apiPrefix: "appointment",
+      }
+    ),
+  checkTaskDone: (id: string) =>
+    http.patch<CreateAppointmentRes>(
+      `cuspackage/custask/${id}/update-status-done`,
+      null,
+      {
+        apiPrefix: "appointment",
+      }
+    ),
+  getMedicalReport: (id: string) =>
+    http.get<GetReportRes>(`medical-record/${id}`, {
+      apiPrefix: "appointment",
+    }),
+  submitMedicalReport: (id: string, body: SubmitReport) =>
+    http.patch<SubmitReportRes>(`medical-record/${id}`, body, {
+      apiPrefix: "appointment",
+    }),
 };
 
 export default appointmentApiRequest;

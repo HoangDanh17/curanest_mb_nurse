@@ -12,34 +12,12 @@ import { Entypo } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ava from "@/assets/images/welcome.png";
-export interface UserInfo {
-  id: string;
-  "full-name": string;
-  email: string;
-  "phone-number": string;
-  role: string;
-}
+import { useProvider } from "@/app/provider";
 
 const ProfileScreen: React.FC = () => {
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const { userData } = useProvider();
 
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const value = await AsyncStorage.getItem("userInfo");
-        if (value) {
-          const parsedValue: UserInfo = JSON.parse(value);
-          setUserInfo(parsedValue);
-        }
-      } catch (error) {
-        console.error("Error fetching user info:", error);
-      }
-    };
-
-    fetchUserInfo();
-  }, []);
-
-  if (!userInfo) {
+  if (!userData) {
     return (
       <View className="flex-1 justify-center items-center">
         <Text>Loading...</Text>
@@ -78,8 +56,12 @@ const ProfileScreen: React.FC = () => {
       <View className="p-4 flex-1 mt-4">
         <View className="flex flex-row items-center justify-between">
           <View>
-            <Text className="text-xl font-bold text-teal-400">{userInfo["full-name"]}</Text>
-            <Text className="text-gray-400 font-psemibold">{userInfo["phone-number"]}</Text>
+            <Text className="text-xl font-bold text-teal-400">
+              {userData["full-name"]}
+            </Text>
+            <Text className="text-gray-400 font-psemibold">
+              {userData["phone-number"]}
+            </Text>
           </View>
           <Image source={Ava} className="w-20 h-20 rounded-full" />
         </View>

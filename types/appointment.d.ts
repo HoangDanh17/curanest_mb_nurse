@@ -109,3 +109,31 @@ export type AppointmentDetailRes = {
   status: number;
   data: AppointmentDetail;
 };
+
+export type StartAppointment = {
+  "appointment-id": string;
+  "origin-code": string;
+};
+
+export type SubmitReport = {
+  "nursing-report": string;
+};
+
+export type SubmitReportRes = {
+  status: number;
+  message: string;
+};
+
+export type GetReport = {
+  id: string;
+  "svc-package-id": string;
+  "patient-id": string;
+  "nursing-report": string;
+  "staff-confirmation": string;
+  status: string;
+  "created-at": string;
+};
+export type GetReportRes = {
+  status: number;
+  data: GetReport;
+};

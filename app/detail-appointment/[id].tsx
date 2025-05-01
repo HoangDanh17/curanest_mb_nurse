@@ -5,26 +5,40 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import React, { useCallback, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import HeaderBack from "@/components/HeaderBack";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useProvider } from "@/app/provider";
-import { AppointmentDetail } from "@/types/appointment";
+import {
+  AppointmentDetail,
+  GetReport,
+  StartAppointment,
+} from "@/types/appointment";
 import appointmentApiRequest from "@/app/api/appointmentApi";
 import { addMinutes, format } from "date-fns";
 import { Patient } from "@/types/patient";
 import patientApiRequest from "@/app/api/patientApi";
+import * as Location from "expo-location";
+import Toast from "react-native-toast-message";
 
 const DetailAppointmentScreen = () => {
-  const { isFinish } = useProvider();
   const { id, packageId, patientId, date, status, locationGPS } =
     useLocalSearchParams();
   const [reportText, setReportText] = useState<string>("");
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [appointments, setAppointments] = useState<AppointmentDetail>();
   const [patientList, setPatientList] = useState<Patient>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [medicalReport, setMedicalReport] = useState<GetReport>();
+
+  const areAllTasksDone = () => {
+    if (!appointments?.tasks || appointments.tasks.length === 0) {
+      return false;
+    }
+    return appointments.tasks.every((task) => task.status === "done");
+  };
 
   async function fetchPatientList() {
     try {
@@ -32,6 +46,15 @@ const DetailAppointmentScreen = () => {
       setPatientList(response.payload.data);
     } catch (error) {
       console.error("Error fetching patient list:", error);
+    }
+  }
+
+  async function fetchMedicalRecord() {
+    try {
+      const response = await appointmentApiRequest.getMedicalReport(String(id));
+      setMedicalReport(response.payload.data);
+    } catch (error) {
+      console.error("Error fetching medical report:", error);
     }
   }
 
@@ -43,18 +66,60 @@ const DetailAppointmentScreen = () => {
       );
       setAppointments(response.payload.data);
     } catch (error) {
-      console.error("Error fetching patient list:", error);
+      console.error("Error fetching appointment detail:", error);
     }
   }
+
+  const fetchLocation = async () => {
+    try {
+      setIsLoading(true);
+      let location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const locationGPS = `${location.coords.latitude},${location.coords.longitude}`;
+      let body: StartAppointment = {
+        "appointment-id": String(id),
+        "origin-code": locationGPS,
+      };
+      const result = await appointmentApiRequest.startAppointment(body);
+
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Đã bắt đầu đến điểm hẹn!",
+        position: "top",
+      });
+
+      await fetchAppointmentDetail();
+      if (patientId) {
+        await fetchPatientList();
+      }
+      router.back();
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể lấy vị trí hoặc bắt đầu lịch hẹn!",
+        position: "top",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
       fetchAppointmentDetail();
+      fetchMedicalRecord();
       if (patientId) {
         fetchPatientList();
       }
-    }, [])
+    }, [patientId, packageId, date])
   );
+
+  const handleStartAppointment = () => {
+    fetchLocation();
+  };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -99,17 +164,47 @@ const DetailAppointmentScreen = () => {
     : 0;
 
   const calculateEndTime = () => {
-    const endTime = addMinutes(String(date), totalDuration);
-    return format(endTime, "HH:mm a");
+    const endTime = addMinutes(new Date(String(date)), totalDuration);
+    return format(endTime, "hh:mm a");
   };
 
   const handleSubmitReport = () => {
+    if (!areAllTasksDone()) {
+      Toast.show({
+        type: "info",
+        text1: "Thông báo",
+        text2: "Vui lòng hoàn thành tất cả các nhiệm vụ trước khi gửi báo cáo!",
+        position: "top",
+      });
+      return;
+    }
     setIsModalVisible(true);
   };
 
-  const confirmSubmit = () => {
-    setReportText("");
+  const confirmSubmit = async () => {
     setIsModalVisible(false);
+    try {
+      const body = { "nursing-report": reportText };
+      await appointmentApiRequest.submitMedicalReport(
+        String(medicalReport?.id),
+        body
+      );
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Báo cáo đã được gửi!",
+        position: "top",
+      });
+      router.back();
+    } catch (error: any) {
+      console.log("🚀 ~ confirmSubmit ~ error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể gửi báo cáo!",
+        position: "top",
+      });
+    }
   };
 
   return (
@@ -199,19 +294,19 @@ const DetailAppointmentScreen = () => {
                 className={`px-3 py-1 ${
                   appointments?.package["payment-status"] === "unpaid"
                     ? "bg-amber-100"
-                    : "bg-emerald-100"
+                    : ""
                 } rounded-full`}
               >
                 <Text
                   className={`${
                     appointments?.package["payment-status"] === "unpaid"
                       ? "text-amber-800"
-                      : "text-emerald-800"
+                      : "text-emerald-400"
                   } font-pmedium`}
                 >
                   {appointments?.package["payment-status"] === "unpaid"
                     ? "Chưa thanh toán"
-                    : "Đã thanh toán"}
+                    : "✓ Đã thanh toán"}
                 </Text>
               </View>
             </View>
@@ -244,6 +339,17 @@ const DetailAppointmentScreen = () => {
                     <Text className="text-gray-500 break-words">
                       Ghi chú: {service["client-note"]}
                     </Text>
+                    <View className="flex-row items-center">
+                      <Text className="text-gray-500 break-words">
+                        Trạng thái:{" "}
+                        {service.status === "done"
+                          ? "Hoàn thành"
+                          : "Chưa hoàn thành"}
+                      </Text>
+                      {service.status === "done" && (
+                        <Text className="ml-2 text-green-500">✔</Text>
+                      )}
+                    </View>
                   </View>
                 ))}
               </View>
@@ -266,82 +372,114 @@ const DetailAppointmentScreen = () => {
           </View>
         </View>
 
-        <TouchableOpacity
-          className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#bd4ada]`}
-          onPress={() =>
-            router.push({
-              pathname: "/report-appointment/[id]",
-              params: {
-                id: String(id),
-                listTask: JSON.stringify(appointments?.tasks),
-              },
-            })
-          }
-        >
-          <Text className="text-white font-pmedium text-center break-words items-center">
-            Bắt đầu đến điểm hẹn
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#4a92da]`}
-          onPress={() =>
-            router.push({
-              pathname: "/map",
-              params: {
-                id: String(id),
-                locationGPS: String(locationGPS),
-              },
-            })
-          }
-        >
-          <Text className="text-white font-pmedium text-center break-words items-center">
-            Map
-          </Text>
-        </TouchableOpacity>
-
-        <View className="mt-6 mb-20">
+        {status !== "upcoming" && (
           <TouchableOpacity
-            className={`flex-1 px-6 py-4 rounded-lg ${
-              isFinish ? "bg-green-500" : "bg-[#64CBDB]"
+            className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#bd4ada] ${
+              isLoading ? "opacity-50" : ""
             }`}
+            onPress={handleStartAppointment}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text className="text-white font-pmedium text-center break-words items-center">
+                Bắt đầu đến điểm hẹn
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {status === "upcoming" && (
+          <TouchableOpacity
+            className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#74b2f1]`}
             onPress={() =>
               router.push({
-                pathname: "/report-appointment/[id]",
+                pathname: "/map",
                 params: {
                   id: String(id),
-                  listTask: JSON.stringify(appointments?.tasks),
+                  locationGPS: String(locationGPS),
                 },
               })
             }
           >
             <Text className="text-white font-pmedium text-center break-words items-center">
-              📋 Báo cáo tiến trình task
+              📍 Map
             </Text>
           </TouchableOpacity>
-
-          {!isFinish && (
-            <View className="mt-6">
-              <Text className="text-lg font-psemibold text-gray-700 mb-2">
-                Báo cáo
+        )}
+        <View className="mt-6 mb-20">
+          {status === "upcoming" && (
+            <TouchableOpacity
+              className={`flex-1 px-6 py-4 rounded-lg ${
+                areAllTasksDone() ? "bg-green-500" : "bg-[#64CBDB]"
+              }`}
+              onPress={() =>
+                router.push({
+                  pathname: "/report-appointment/[id]",
+                  params: {
+                    id: String(id),
+                    listTask: JSON.stringify(appointments?.tasks),
+                  },
+                })
+              }
+            >
+              <Text className="text-white font-pmedium text-center break-words items-center">
+                📋 Báo cáo tiến trình task
               </Text>
-              <TextInput
-                placeholder="Nhập nội dung báo cáo..."
-                value={reportText}
-                onChangeText={setReportText}
-                multiline
-                numberOfLines={4}
-                className="border rounded-lg p-2 mt-2 h-32 font-psemibold text-gray-500"
-                style={{ textAlignVertical: "top", textAlign: "left" }}
-              />
-              <TouchableOpacity
-                className="mt-4 px-6 py-4 bg-green-400 rounded-lg"
-                onPress={handleSubmitReport}
-              >
-                <Text className="text-white font-pbold text-center">
-                  ✔ Xác nhận hoàn thành
+            </TouchableOpacity>
+          )}
+
+          {status === "upcoming" && (
+            <View className="mt-6">
+              <View className="flex-row items-center mb-4 gap-2">
+                <Text className="text-xl font-psemibold text-gray-700">
+                  Báo cáo -
                 </Text>
-              </TouchableOpacity>
+                {medicalReport?.["nursing-report"] && (
+                  <View className="bg-amber-100  rounded-2xl px-4 py-2">
+                    <Text className="text-amber-500 font-psemibold">
+                      Đợi staff xác nhận
+                    </Text>
+                  </View>
+                )}
+              </View>
+              {!appointments?.tasks || appointments.tasks.length === 0 ? (
+                <Text className="text-gray-500 text-center">
+                  Không có nhiệm vụ nào để báo cáo.
+                </Text>
+              ) : medicalReport?.["nursing-report"] ? (
+                <Text className="text-gray-500 font-pmedium break-words border rounded-lg p-2">
+                  {medicalReport["nursing-report"]}
+                </Text>
+              ) : (
+                <>
+                  <TextInput
+                    placeholder="Nhập nội dung báo cáo..."
+                    value={reportText}
+                    onChangeText={setReportText}
+                    multiline
+                    numberOfLines={4}
+                    className="border rounded-lg p-2 mt-2 h-32 font-psemibold text-gray-500"
+                    style={{ textAlignVertical: "top", textAlign: "left" }}
+                  />
+                  <TouchableOpacity
+                    className={`mt-4 px-6 py-4 rounded-lg ${
+                      areAllTasksDone() ? "bg-emerald-400" : "bg-teal-400"
+                    }`}
+                    onPress={handleSubmitReport}
+                    disabled={!areAllTasksDone()}
+                  >
+                    <Text
+                      className={`${
+                        areAllTasksDone() ? "text-white" : "text-gray-500"
+                      } font-pbold text-center`}
+                    >
+                      ✔ Xác nhận hoàn thành
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
         </View>

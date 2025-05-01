@@ -6,7 +6,12 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import MapView, { Polyline, Marker, UrlTile } from "react-native-maps";
+import MapView, {
+  Polyline,
+  Marker,
+  UrlTile,
+  PROVIDER_GOOGLE,
+} from "react-native-maps";
 import GoongServices from "@goongmaps/goong-sdk";
 import DirectionsService from "@goongmaps/goong-sdk/services/directions";
 import polyline from "@mapbox/polyline";
@@ -15,11 +20,14 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-const Goong = process.env.GOONG_MAPTILES_KEY;
-const GOONG_MAPTILES_URL = `https://api.goong.io/tile/{z}/{x}/{y}.png?api_key=${Goong}`;
+// API Keys
+const GOONG_MAPTILES_KEY = process.env.EXPO_PUBLIC_GOONG_MAPTILES_KEY;
+const GOONG_DIRECTIONS_KEY = process.env.EXPO_PUBLIC_GOONG_API_KEY;
+
+const GOONG_MAPTILES_URL = `https://api.goong.io/tile/{z}/{x}/{y}.png?api_key=${GOONG_MAPTILES_KEY}`;
 
 const goongServices = GoongServices({
-  accessToken: "h6ciGm6oTBTktgLs6XTYcJXlt0e7ZPC6x3T3NZwV",
+  accessToken: GOONG_DIRECTIONS_KEY,
 });
 const directionsService = DirectionsService(goongServices);
 
@@ -46,17 +54,12 @@ const MapScreen: React.FC = () => {
       .map((val) => Number(val));
     if (!isNaN(latitude) && !isNaN(longitude)) {
       pointB = { latitude, longitude };
-    } else {
-      console.error("Invalid locationGPS format:", locationGPS);
     }
   }
 
   const [coordinates, setCoordinates] = useState<CoordinatesState>({
     pointA: null,
-    pointB: pointB || {
-      latitude: 10.75500449695062,
-      longitude: 106.63459685122865,
-    },
+    pointB: pointB,
     route: [],
   });
   const [error, setError] = useState<string | null>(null);
@@ -64,12 +67,11 @@ const MapScreen: React.FC = () => {
   const [distance, setDistance] = useState<number | null>(null);
   const [lastRouteFetch, setLastRouteFetch] = useState<number>(0);
 
-  // Haversine formula to calculate straight-line distance (in kilometers)
   const calculateDistance = (
     coord1: Coordinate,
     coord2: Coordinate
   ): number => {
-    const R = 6371; // Earth's radius in kilometers
+    const R = 6371;
     const dLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
     const dLon = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
     const a =
@@ -79,7 +81,7 @@ const MapScreen: React.FC = () => {
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c; // Distance in kilometers
+    return R * c;
   };
 
   const getRoute = async (
@@ -87,7 +89,15 @@ const MapScreen: React.FC = () => {
     destination: Coordinate
   ): Promise<{ route: Coordinate[]; distance: number | null }> => {
     try {
-      console.log("Fetching route from", origin, "to", destination);
+      if (
+        !origin.latitude ||
+        !origin.longitude ||
+        !destination.latitude ||
+        !destination.longitude
+      ) {
+        throw new Error("Invalid coordinates provided");
+      }
+
       const response = await directionsService
         .getDirections({
           origin: `${origin.latitude},${origin.longitude}`,
@@ -96,17 +106,22 @@ const MapScreen: React.FC = () => {
         })
         .send();
 
-      const polylinePoints = response.body.routes[0]?.overview_polyline?.points;
-      const routeDistance = response.body.routes[0]?.distance; // Distance in meters
+      const routes = response.body.routes;
+      if (!routes || routes.length === 0) {
+        throw new Error("No routes found in API response");
+      }
+
+      const polylinePoints = routes[0]?.overview_polyline?.points;
+      const routeDistance = routes[0]?.legs?.[0]?.distance?.value;
       if (!polylinePoints) {
-        throw new Error("No route found in API response");
+        throw new Error("No polyline points found in API response");
       }
 
       const decodedCoordinates = polyline.decode(polylinePoints);
       const formattedRoute = decodedCoordinates.map(
-        (coord: [number, number]) => ({
-          latitude: coord[0],
-          longitude: coord[1],
+        ([lat, lng]: [number, number]) => ({
+          latitude: lat,
+          longitude: lng,
         })
       );
 
@@ -116,7 +131,7 @@ const MapScreen: React.FC = () => {
       };
     } catch (error: any) {
       console.error("Route fetch error:", error.message);
-      setError(`Failed to fetch route: ${error.message}`);
+      setError(`Không thể lấy tuyến đường: ${error.message}`);
       return { route: [], distance: null };
     }
   };
@@ -125,13 +140,19 @@ const MapScreen: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      let location = await Location.getCurrentPositionAsync({
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        throw new Error("Quyền truy cập vị trí bị từ chối");
+      }
+
+      const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
-      const currentLocation = {
+      const currentLocation: Coordinate = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       };
+
       setCoordinates((prev) => ({ ...prev, pointA: currentLocation }));
 
       if (currentLocation && coordinates.pointB) {
@@ -144,17 +165,16 @@ const MapScreen: React.FC = () => {
           distance || calculateDistance(currentLocation, coordinates.pointB)
         );
       } else {
-        setError("Destination coordinates are missing");
+        setError("Thiếu tọa độ điểm đến");
       }
     } catch (error: any) {
       console.error("Initial fetch error:", error.message);
-      setError("Failed to fetch location or route");
+      setError("Không thể lấy vị trí hoặc tuyến đường");
     } finally {
       setLoading(false);
     }
   };
 
-  // Watch user's location in real-time with throttling
   useEffect(() => {
     let subscription: Location.LocationSubscription | null = null;
 
@@ -162,7 +182,7 @@ const MapScreen: React.FC = () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
-          setError("Location permission denied");
+          setError("Quyền truy cập vị trí bị từ chối");
           setLoading(false);
           return;
         }
@@ -170,25 +190,24 @@ const MapScreen: React.FC = () => {
         subscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            distanceInterval: 50, // Update every 50 meters
-            timeInterval: 5000, // Update every 5 seconds
+            distanceInterval: 50,
+            timeInterval: 5000,
           },
           (location) => {
-            const currentLocation = {
+            const currentLocation: Coordinate = {
               latitude: location.coords.latitude,
               longitude: location.coords.longitude,
             };
+
             setCoordinates((prev) => ({ ...prev, pointA: currentLocation }));
 
             if (coordinates.pointB) {
-              // Update distance
               const newDistance = calculateDistance(
                 currentLocation,
                 coordinates.pointB
               );
               setDistance(newDistance);
 
-              // Throttle route refetching (every 10 seconds)
               const now = Date.now();
               if (now - lastRouteFetch > 10000) {
                 setLastRouteFetch(now);
@@ -200,19 +219,18 @@ const MapScreen: React.FC = () => {
                 );
               }
 
-              // Center map on user's location
               mapRef.current?.animateToRegion({
                 latitude: currentLocation.latitude,
                 longitude: currentLocation.longitude,
-                latitudeDelta: 0.01, // Closer zoom
-                longitudeDelta: 0.01, // Closer zoom
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
               });
             }
           }
         );
       } catch (error: any) {
         console.error("Watch location error:", error.message);
-        setError("Failed to watch location");
+        setError("Không thể theo dõi vị trí");
       }
     };
 
@@ -252,16 +270,17 @@ const MapScreen: React.FC = () => {
               latitudeDelta: 0.04,
               longitudeDelta: 0.04,
             }}
+            provider={PROVIDER_GOOGLE}
           >
             <UrlTile urlTemplate={GOONG_MAPTILES_URL} zIndex={1} />
             <Marker
               coordinate={coordinates.pointA}
               title="Vị trí hiện tại"
-              description="Your location"
+              description="Vị trí của bạn"
             />
             <Marker
               coordinate={coordinates.pointB}
-              title="Điểm B"
+              title="Điểm đến"
               description="Destination"
             />
             {coordinates.route.length > 0 && (

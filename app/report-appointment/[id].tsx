@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { format } from "date-fns";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/ToastConfig";
+import appointmentApiRequest from "@/app/api/appointmentApi";
 
 interface Report {
   id: string;
@@ -23,6 +24,8 @@ interface ReportAppointmentItemProps {
   index: number;
   onReportUpdate: (reportId: string, isCompleted: boolean) => void;
   isPreviousTasksCompleted: boolean;
+  isTaskLocked: boolean;
+  lockTask: (reportId: string) => void;
 }
 
 const ReportAppointmentItem: React.FC<ReportAppointmentItemProps> = ({
@@ -30,12 +33,23 @@ const ReportAppointmentItem: React.FC<ReportAppointmentItemProps> = ({
   index,
   onReportUpdate,
   isPreviousTasksCompleted,
+  isTaskLocked,
+  lockTask,
 }) => {
   const [isCompleted, setIsCompleted] = useState<boolean>(
     report.status === "done"
   );
 
-  const handleToggleComplete = () => {
+  const handleToggleComplete = async () => {
+    if (isTaskLocked && isCompleted) {
+      Toast.show({
+        type: "warning",
+        text1: "Cảnh báo",
+        text2: "Nhiệm vụ này đã hoàn thành và không thể bỏ chọn!",
+      });
+      return;
+    }
+
     if (!isPreviousTasksCompleted && !isCompleted) {
       Toast.show({
         type: "warning",
@@ -45,13 +59,34 @@ const ReportAppointmentItem: React.FC<ReportAppointmentItemProps> = ({
       return;
     }
 
-    setIsCompleted((prev) => {
-      const newValue = !prev;
+    const newValue = !isCompleted;
+    if (newValue) {
+      try {
+        const result = await appointmentApiRequest.checkTaskDone(report.id);
+        if (result) {
+          setIsCompleted(newValue);
+          onReportUpdate(report.id, newValue);
+          lockTask(report.id);
+          Toast.show({
+            type: "success",
+            text1: "Thành công",
+            text2: `Nhiệm vụ "${report.title}" đã được hoàn thành!`,
+          });
+        } else {
+          throw new Error("API call failed");
+        }
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: "Không thể hoàn thành nhiệm vụ. Vui lòng thử lại!",
+        });
+      }
+    } else {
+      setIsCompleted(newValue);
       onReportUpdate(report.id, newValue);
-      return newValue;
-    });
+    }
   };
-
   return (
     <View className="mb-6">
       <View
@@ -108,7 +143,6 @@ const ReportAppointment: React.FC = () => {
   const { listTask } = useLocalSearchParams();
   const parsedlistTask: any[] = listTask ? JSON.parse(String(listTask)) : [];
 
-  // Map and sort tasks by task-order
   const reports: Report[] = parsedlistTask
     .map((task) => ({
       id: task.id,
@@ -132,6 +166,14 @@ const ReportAppointment: React.FC = () => {
     }, {} as Record<string, boolean>)
   );
 
+  const [lockedTasks, setLockedTasks] = useState<Set<string>>(
+    new Set(
+      reports
+        .filter((report) => report.status === "done")
+        .map((report) => report.id)
+    )
+  );
+
   const handleReportUpdate = (reportId: string, isCompleted: boolean) => {
     setReportCompletion((prev) => ({
       ...prev,
@@ -139,7 +181,10 @@ const ReportAppointment: React.FC = () => {
     }));
   };
 
-  // Check if previous tasks are completed for a given index
+  const lockTask = (reportId: string) => {
+    setLockedTasks((prev) => new Set([...prev, reportId]));
+  };
+
   const isPreviousTasksCompleted = (index: number) => {
     for (let i = 0; i < index; i++) {
       if (!reportCompletion[reports[i].id]) {
@@ -176,11 +221,12 @@ const ReportAppointment: React.FC = () => {
             index={index}
             onReportUpdate={handleReportUpdate}
             isPreviousTasksCompleted={isPreviousTasksCompleted(index)}
+            isTaskLocked={lockedTasks.has(item.id)}
+            lockTask={lockTask}
           />
         )}
         contentContainerStyle={{ padding: 16 }}
       />
-      <Toast config={toastConfig} />
     </View>
   );
 };

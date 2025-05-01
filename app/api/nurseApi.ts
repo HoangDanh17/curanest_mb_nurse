@@ -1,5 +1,5 @@
 import http from "@/lib/http";
-import { DetailNurseRes, ListNurseDataRes, NurseDataRes } from "@/types/nurse";
+import { DetailNurseRes, FeedbackTypeRes, ListNurseDataRes, NurseDataRes } from "@/types/nurse";
 
 const nurseApiRequest = {
   nurseProfile: () =>
@@ -21,6 +21,9 @@ const nurseApiRequest = {
     }),
   getDetailNurse: (id: string | string[]) =>
     http.get<DetailNurseRes>(`nurses/${id}`, { apiPrefix: "nurse" }),
+  getFeedbackList: (id: string) =>
+    http.get<FeedbackTypeRes>(`feedbacks/nursing/${id}`, { apiPrefix: "nurse" }),
+ 
 };
 
 export default nurseApiRequest;

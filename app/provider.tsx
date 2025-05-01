@@ -1,17 +1,18 @@
+import { UserData } from "@/app/(auth)/login";
 import React, { createContext, useState, useContext, ReactNode } from "react";
 
 type ProviderContextType = {
-  isFinish: boolean;
-  setIsFinish: (value: boolean) => void;
+  userData: UserData | undefined;
+  setUserData: (data: UserData | undefined) => void;
 };
 
 const ProviderContext = createContext<ProviderContextType | undefined>(undefined);
 
 export const Provider = ({ children }: { children: ReactNode }) => {
-  const [isFinish, setIsFinish] = useState<boolean>(false);
+  const [userData, setUserData] = useState<UserData | undefined>();
 
   return (
-    <ProviderContext.Provider value={{ isFinish, setIsFinish }}>
+    <ProviderContext.Provider value={{ userData, setUserData }}>
       {children}
     </ProviderContext.Provider>
   );

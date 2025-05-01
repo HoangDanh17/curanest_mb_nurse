@@ -7,9 +7,15 @@
     "icon": "./assets/images/logo-app.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show your position on the map and provide navigation."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyDOXNjwCa5Z9vXhs2kU1H7EIQrKxVgd_3I"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +27,12 @@
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDOXNjwCa5Z9vXhs2kU1H7EIQrKxVgd_3I"
+        }
+      }
     },
     "web": {
       "bundler": "metro",

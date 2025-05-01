@@ -13,9 +13,8 @@ import {
   Pressable,
 } from "react-native";
 import { AppointmentList, Status, StatusStyle } from "@/types/appointment";
-import { UserInfo } from "@/app/(tabs)/profile";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useProvider } from "@/app/provider";
 
 const STATUS_STYLES: Record<Status, StatusStyle> = {
   waiting: {
@@ -56,25 +55,13 @@ const AppointmentHistoryScreen = () => {
   const [appointments, setAppointments] = useState<AppointmentList[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-
-  const fetchUserInfo = async () => {
-    try {
-      const value = await AsyncStorage.getItem("userInfo");
-      if (value) {
-        const parsedValue: UserInfo = JSON.parse(value);
-        setUserInfo(parsedValue);
-      }
-    } catch (error) {
-      console.error("Error fetching user info:", error);
-    }
-  };
+  const { userData } = useProvider();
 
   async function fetchAppointments() {
     try {
       setIsLoading(true);
       const response = await appointmentApiRequest.getListAppointmentHistory(
-        String(userInfo?.id)
+        String(userData?.id)
       );
       setAppointments(response.payload.data);
     } catch (error) {
@@ -85,7 +72,6 @@ const AppointmentHistoryScreen = () => {
   }
 
   useEffect(() => {
-    fetchUserInfo();
     fetchAppointments();
   }, []);
 

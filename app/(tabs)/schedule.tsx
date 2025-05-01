@@ -16,6 +16,7 @@ import { UserData } from "@/app/(auth)/login";
 import { format } from "date-fns";
 import appointmentApiRequest from "@/app/api/appointmentApi";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useProvider } from "@/app/provider";
 
 export interface Appointment {
   id: string;
@@ -61,7 +62,7 @@ const AppointmentScreen = () => {
   const flatListRef = useRef<FlatList>(null);
   const translateY = useSharedValue(-50);
   const [appointments, setAppointments] = useState<AppointmentList[]>([]);
-  const [data, setData] = useState<UserData | undefined>();
+  const { userData } = useProvider();
 
   async function fetchAppointments() {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -71,7 +72,7 @@ const AppointmentScreen = () => {
     );
     try {
       const response = await appointmentApiRequest.getListAppointment(
-        String(data?.id),
+        String(userData?.id),
         today,
         tomorrow
       );
@@ -80,7 +81,9 @@ const AppointmentScreen = () => {
 
       const filteredData = response.payload.data.filter(
         (item: AppointmentList) =>
-          item.status === "confirmed" || item.status === "upcoming"
+          item.status === "confirmed" ||
+          item.status === "upcoming" ||
+          item.status === "success"
       );
 
       filteredData.forEach((item: AppointmentList) => {
@@ -117,14 +120,6 @@ const AppointmentScreen = () => {
   }
 
   useEffect(() => {
-    const fetchData = async () => {
-      const dataUser = await AsyncStorage.getItem("userInfo");
-      if (dataUser) {
-        const parsedData: UserData = JSON.parse(dataUser);
-        setData(parsedData);
-      }
-    };
-    fetchData();
     const today = new Date();
     setSelectedDate(today);
     handleDateSelect(today);
@@ -132,7 +127,7 @@ const AppointmentScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (data?.id) {
+      if (userData?.id) {
         fetchAppointments().then(() => {
           const dates = getDates();
           if (dates.length > 0 && !selectedDate) {
@@ -141,7 +136,7 @@ const AppointmentScreen = () => {
           }
         });
       }
-    }, [data?.id])
+    }, [userData?.id])
   );
 
   const getDates = () => {
@@ -199,7 +194,7 @@ const AppointmentScreen = () => {
       setLoadingTime(null);
       return;
     }
-    if (!data?.id) {
+    if (!userData?.id) {
       console.error("data.id is undefined");
       setLoadingTime(null);
       return;
@@ -220,7 +215,7 @@ const AppointmentScreen = () => {
       const params = {
         id: selectedAppointment.id,
         packageId: selectedAppointment.cuspackageId || "",
-        nurseId: selectedAppointment.nurseId || String(data.id),
+        nurseId: selectedAppointment.nurseId || String(userData.id),
         patientId: selectedAppointment.patientId || "",
         date: selectedAppointment.estDate || "",
         locationGPS: selectedAppointment.locationGPS,
