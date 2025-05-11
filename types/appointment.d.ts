@@ -112,7 +112,6 @@ export type AppointmentDetailRes = {
 
 export type StartAppointment = {
   "appointment-id": string;
-  "origin-code": string;
 };
 
 export type SubmitReport = {

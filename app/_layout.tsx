@@ -195,6 +195,10 @@ export default function RootLayout() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="detail-notification"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="report-appointment/[id]"
           options={{ headerShown: false }}
         />

@@ -162,6 +162,8 @@ const LoginScreen: React.FC = () => {
   const pulse = useSharedValue(1);
   const phoneAnimation = useSharedValue(0);
   const passwordAnimation = useSharedValue(0);
+  const tooltipOpacity = useSharedValue(0);
+  const tooltipScale = useSharedValue(0.8);
 
   const [phone, setPhone] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -170,8 +172,16 @@ const LoginScreen: React.FC = () => {
   const [errors, setErrors] = useState<{ phone?: string; password?: string }>(
     {}
   );
+  const [token1, setToken] = useState<string>();
+  const [showTooltip, setShowTooltip] = useState<boolean>(false);
+
+  const handleGetToken = async () => {
+    const pushToken = await AsyncStorage.getItem("expoPushToken");
+    setToken(String(pushToken));
+  };
 
   useEffect(() => {
+    handleGetToken();
     fadeIn.value = withTiming(1, { duration: 1000 });
     slideIn.value = withTiming(0, { duration: 800 });
     scale.value = withSpring(1, { damping: 15 });
@@ -185,6 +195,18 @@ const LoginScreen: React.FC = () => {
       true
     );
   }, []);
+
+  const handleLongPress = () => {
+    setShowTooltip(true);
+    tooltipOpacity.value = withTiming(1, { duration: 200 });
+    tooltipScale.value = withSpring(1, { damping: 15 });
+  };
+
+  const handlePressOut = () => {
+    setShowTooltip(false);
+    tooltipOpacity.value = withTiming(0, { duration: 200 });
+    tooltipScale.value = withSpring(0.8, { damping: 15 });
+  };
 
   const validateForm = () => {
     const newErrors: { phone?: string; password?: string } = {};
@@ -209,6 +231,7 @@ const LoginScreen: React.FC = () => {
       const form = {
         password: password,
         "phone-number": phone,
+        "push-token": token1,
       };
       const response = await authApiRequest.login(form);
 
@@ -225,7 +248,7 @@ const LoginScreen: React.FC = () => {
         "userInfo",
         JSON.stringify(response.payload.data["account-info"])
       );
-      
+
       const token = response.payload.data.token["access_token"];
       await AsyncStorage.setItem("accessToken", token);
       router.push("/(tabs)/home");
@@ -253,6 +276,13 @@ const LoginScreen: React.FC = () => {
     };
   });
 
+  const tooltipStyle = useAnimatedStyle(() => {
+    return {
+      opacity: tooltipOpacity.value,
+      transform: [{ scale: tooltipScale.value }],
+    };
+  });
+
   return (
     <SafeAreaView className="flex-1 bg-[#F5F9FF]">
       <KeyboardAvoidingView
@@ -263,21 +293,41 @@ const LoginScreen: React.FC = () => {
           className="flex-1 justify-center items-center p-6"
           style={mainContainerStyle}
         >
-          <View className="w-full max-w-md bg-white rounded-[40px] shadow-lg p-8">
+          <View className="w-full max-w-md bg-white rounded-[40px] shadow-lg p-8 relative">
+            {/* Icon and Tooltip in Top-Left Corner of Logo */}
+            <View className="absolute top-4 left-4 z-10">
+              <TouchableOpacity
+                onLongPress={handleLongPress}
+                onPressOut={handlePressOut}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="info" size={24} color="#2D3748" />
+              </TouchableOpacity>
+              {showTooltip && (
+                <AnimatedView
+                  style={[tooltipStyle]}
+                  className="absolute top-0 left-8 bg-[#2D3748] rounded-lg p-2 min-w-[200px]"
+                >
+                  <Text className="text-white text-sm font-pmedium">
+                    {token1 || "No token available"}
+                  </Text>
+                </AnimatedView>
+              )}
+            </View>
+
             <AnimatedView className="items-center mb-10" style={logoStyle}>
               <Image
                 source={LogoApp}
                 className="w-60 h-60 absolute top-[-60]"
                 resizeMode="contain"
               />
-              <Text className="text-4xl font-pbold text-[#2D3748] mt-24 ">
+              <Text className="text-4xl font-pbold text-[#2D3748] mt-24">
                 Curanest
               </Text>
               <Text className="text-sm text-[#718096] mt-2 font-psemibold">
                 Hệ thống quản lý điều dưỡng
               </Text>
             </AnimatedView>
-
             <Input
               icon="phone"
               placeholder="Số điện thoại"
@@ -288,7 +338,6 @@ const LoginScreen: React.FC = () => {
               animatedValue={phoneAnimation}
               error={errors.phone}
             />
-
             <Input
               icon="lock"
               placeholder="Mật khẩu"
@@ -302,7 +351,6 @@ const LoginScreen: React.FC = () => {
               showPassword={showPassword}
               onTogglePassword={() => setShowPassword(!showPassword)}
             />
-
             <TouchableOpacity
               className="w-full py-4 rounded-2xl items-center bg-[#64DBDD] mt-4"
               onPress={handleLogin}

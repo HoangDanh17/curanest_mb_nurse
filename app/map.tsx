@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Linking,
 } from "react-native";
 import MapView, {
   Polyline,
@@ -15,12 +16,11 @@ import MapView, {
 import GoongServices from "@goongmaps/goong-sdk";
 import DirectionsService from "@goongmaps/goong-sdk/services/directions";
 import polyline from "@mapbox/polyline";
-import * as Location from "expo-location";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 
-// API Keys
 const GOONG_MAPTILES_KEY = process.env.EXPO_PUBLIC_GOONG_MAPTILES_KEY;
 const GOONG_DIRECTIONS_KEY = process.env.EXPO_PUBLIC_GOONG_API_KEY;
 
@@ -65,7 +65,27 @@ const MapScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [distance, setDistance] = useState<number | null>(null);
-  const [lastRouteFetch, setLastRouteFetch] = useState<number>(0);
+
+  const getCurrentLocation = async (): Promise<Coordinate | null> => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        throw new Error("Quyền truy cập vị trí bị từ chối");
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      return {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+    } catch (err: any) {
+      console.error("Location error:", err.message);
+      setError(`Không thể lấy vị trí: ${err.message}`);
+      return null;
+    }
+  };
 
   const calculateDistance = (
     coord1: Coordinate,
@@ -140,18 +160,10 @@ const MapScreen: React.FC = () => {
     setError(null);
     setLoading(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        throw new Error("Quyền truy cập vị trí bị từ chối");
+      const currentLocation = await getCurrentLocation();
+      if (!currentLocation) {
+        throw new Error("Không thể lấy vị trí hiện tại");
       }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      const currentLocation: Coordinate = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
 
       setCoordinates((prev) => ({ ...prev, pointA: currentLocation }));
 
@@ -175,80 +187,23 @@ const MapScreen: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    let subscription: Location.LocationSubscription | null = null;
-
-    const startWatching = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          setError("Quyền truy cập vị trí bị từ chối");
-          setLoading(false);
-          return;
-        }
-
-        subscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: 50,
-            timeInterval: 5000,
-          },
-          (location) => {
-            const currentLocation: Coordinate = {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            };
-
-            setCoordinates((prev) => ({ ...prev, pointA: currentLocation }));
-
-            if (coordinates.pointB) {
-              const newDistance = calculateDistance(
-                currentLocation,
-                coordinates.pointB
-              );
-              setDistance(newDistance);
-
-              const now = Date.now();
-              if (now - lastRouteFetch > 10000) {
-                setLastRouteFetch(now);
-                getRoute(currentLocation, coordinates.pointB).then(
-                  ({ route, distance }) => {
-                    setCoordinates((prev) => ({ ...prev, route }));
-                    setDistance(distance || newDistance);
-                  }
-                );
-              }
-
-              mapRef.current?.animateToRegion({
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              });
-            }
-          }
-        );
-      } catch (error: any) {
-        console.error("Watch location error:", error.message);
-        setError("Không thể theo dõi vị trí");
-      }
-    };
-
-    startWatching();
-
-    return () => {
-      if (subscription) {
-        subscription.remove();
-      }
-    };
-  }, [coordinates.pointB, lastRouteFetch]);
-
   useFocusEffect(
     useCallback(() => {
       fetchData();
       return () => {};
     }, [])
   );
+
+  const startNavigation = () => {
+    if (coordinates.pointA && coordinates.pointB) {
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${coordinates.pointA.latitude},${coordinates.pointA.longitude}&destination=${coordinates.pointB.latitude},${coordinates.pointB.longitude}&travelmode=driving&dir_action=navigate`;
+      Linking.openURL(url).catch((err) =>
+        console.error("Không thể mở Google Maps:", err)
+      );
+    } else {
+      setError("Vui lòng đảm bảo vị trí hiện tại và điểm đến đã được xác định");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -304,6 +259,13 @@ const MapScreen: React.FC = () => {
               {distance ? distance.toFixed(2) : "Đang tính"} km
             </Text>
           </View>
+          <TouchableOpacity
+            style={styles.startButton}
+            onPress={startNavigation}
+            accessibilityLabel="Bắt đầu điều hướng"
+          >
+            <Text style={styles.startButtonText}>Bắt đầu</Text>
+          </TouchableOpacity>
         </>
       ) : (
         <Text>Không thể tải bản đồ</Text>
@@ -350,6 +312,22 @@ const styles = StyleSheet.create({
   distanceText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  startButton: {
+    position: "absolute",
+    bottom: 20,
+    alignSelf: "center",
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  startButtonText: {
+    color: "#fff",
+    fontSize: 18,
     fontWeight: "bold",
   },
 });

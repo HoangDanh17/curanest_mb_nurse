@@ -6,6 +6,7 @@ export interface LoginBodyType {
 export interface LoginResType {
   data: {
     "account-info": {
+      id: string;
       "full-name": string;
       "phone-number": string;
       email: string;

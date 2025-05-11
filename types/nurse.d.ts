@@ -105,3 +105,10 @@ export type FeedbackTypeRes = {
   status: number;
   data: FeedbackType[];
 };
+
+
+
+export type FeedbackTypeOneRes = {
+  status: number;
+  data: FeedbackType;
+};

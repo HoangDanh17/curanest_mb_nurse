@@ -76,7 +76,6 @@ const AppointmentScreen = () => {
         today,
         tomorrow
       );
-
       const mappedAppointments: { [key: string]: Appointment[] } = {};
 
       const filteredData = response.payload.data.filter(
@@ -125,6 +124,7 @@ const AppointmentScreen = () => {
     handleDateSelect(today);
   }, []);
 
+  
   useFocusEffect(
     useCallback(() => {
       if (userData?.id) {

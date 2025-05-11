@@ -14,7 +14,7 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show your position on the map and provide navigation."
       },
       "config": {
-        "googleMapsApiKey": "$(EXPO_PUBLIC_GOOGLE_API_KEY)"
+        "googleMapsApiKey": "AIzaSyDOXNjwCa5Z9vXhs2kU1H7EIQrKxVgd_3I"
       }
     },
     "android": {
@@ -30,7 +30,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "$(EXPO_PUBLIC_GOOGLE_API_KEY)"
+          "apiKey": "AIzaSyDOXNjwCa5Z9vXhs2kU1H7EIQrKxVgd_3I"
         }
       }
     },

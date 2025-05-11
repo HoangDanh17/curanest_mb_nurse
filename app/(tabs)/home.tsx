@@ -8,8 +8,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Pressable,
+  TouchableOpacity,
 } from "react-native";
-import Logo from "@/assets/images/logo-app.png";
 import WelcomeImage from "@/assets/images/homepage.png";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -19,29 +19,33 @@ import appointmentApiRequest from "@/app/api/appointmentApi";
 import { UserData } from "@/app/(auth)/login";
 import { format } from "date-fns";
 import { useProvider } from "@/app/provider";
+import { Ionicons } from "@expo/vector-icons";
+import { NotiListType } from "@/types/noti";
+import notiApiRequest from "@/app/api/notiApi";
 
 const { width, height } = Dimensions.get("window");
 
 const HomeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentList[]>([]);
-  const [data, setData] = useState<UserData | undefined>();
   const { setUserData } = useProvider();
+  const [data, setData] = useState<UserData | undefined>();
+  const [notiList, setNotiList] = useState<NotiListType[]>([]);
 
-  const fetchUserData = async () => {
+  async function fetchNoti(userId: string) {
     try {
-      const dataUser = await AsyncStorage.getItem("userInfo");
-      if (dataUser) {
-        const parsedData: UserData = JSON.parse(dataUser);
-        setData(parsedData);
-        setUserData(parsedData);
-        return parsedData;
-      }
+      setLoading(true);
+      const response = await notiApiRequest.getNotiList(userId);
+      const filterData = response.payload.data.filter(
+        (s) => s["read-at"] === null
+      );
+      setNotiList(filterData);
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("Error fetching notifications:", error);
+    } finally {
+      setLoading(false);
     }
-    return null;
-  };
+  }
 
   const fetchAppointments = async (userId: string) => {
     setLoading(true);
@@ -59,11 +63,21 @@ const HomeScreen = () => {
       const sortedAppointments = response.payload.data
         .filter(
           (item: AppointmentList) =>
-            item.status === "confirmed" || item.status === "upcoming"
+            item.status === "confirmed" ||
+            item.status === "upcoming" ||
+            item.status === "success"
         )
         .sort((a: AppointmentList, b: AppointmentList) => {
-          if (a.status === "confirmed" && b.status === "upcoming") return -1;
-          if (a.status === "upcoming" && b.status === "confirmed") return 1;
+          const statusPriority: { [key: string]: number } = {
+            confirmed: 1,
+            upcoming: 2,
+            success: 3,
+          };
+          const priorityA = statusPriority[a.status] || 4;
+          const priorityB = statusPriority[b.status] || 4;
+          if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+          }
           return (
             new Date(a["est-date"]).getTime() -
             new Date(b["est-date"]).getTime()
@@ -77,16 +91,40 @@ const HomeScreen = () => {
     }
   };
 
+  const fetchUserInfo = async () => {
+    try {
+      const value = await AsyncStorage.getItem("userInfo");
+      if (value) {
+        const parsedValue: UserData = JSON.parse(value);
+        setUserData(parsedValue);
+        setData(parsedValue);
+        return parsedValue;
+      }
+    } catch (error) {
+      console.error("Error fetching user info:", error);
+    }
+    return null;
+  };
+
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      fetchUserData().then((userData) => {
-        if (userData?.id) {
-          fetchAppointments(String(userData.id));
-        } else {
+      const loadData = async () => {
+        setLoading(true);
+        try {
+          const userInfo = await fetchUserInfo();
+          if (userInfo && userInfo.id) {
+            await Promise.all([
+              fetchAppointments(String(userInfo.id)),
+              fetchNoti(String(userInfo.id)),
+            ]);
+          }
+        } catch (error) {
+          console.error("Error loading data:", error);
+        } finally {
           setLoading(false);
         }
-      });
+      };
+      loadData();
     }, [])
   );
 
@@ -114,6 +152,13 @@ const HomeScreen = () => {
           statusText: "Sắp tới",
           statusColor: "#FFA500",
         };
+      case "success":
+        return {
+          backgroundColor: "#E6FFFA",
+          borderColor: "#00C4B4",
+          statusText: "Hoàn thành",
+          statusColor: "#00C4B4",
+        };
       default:
         return {
           backgroundColor: "#FFFFFF",
@@ -134,7 +179,7 @@ const HomeScreen = () => {
           router.push({
             pathname: "/detail-appointment/[id]",
             params: {
-              id: String(data?.id),
+              id: String(item.id),
               packageId: item["cuspackage-id"],
               nurseId: String(data?.id),
               patientId: item["patient-id"],
@@ -183,8 +228,8 @@ const HomeScreen = () => {
   return (
     <SafeAreaView className="bg-white h-full">
       <ScrollView>
-        <View className="flex flex-row items-center justify-between px-4">
-          <View className="flex flex-col items-start">
+        <View className="flex flex-row items-center justify-between px-4 mt-4">
+          <View className="flex flex-col items-start mb-5">
             <Text className="text-md font-psemibold text-gray-400">
               Chào mừng trở lại
             </Text>
@@ -192,14 +237,25 @@ const HomeScreen = () => {
               {data?.["full-name"] || "Khách"}
             </Text>
           </View>
-          <Image
-            source={Logo}
-            style={{
-              width: width * 0.3,
-              height: height * 0.14,
-              resizeMode: "contain",
-            }}
-          />
+          <View className="flex flex-row items-center">
+            <TouchableOpacity
+              onPress={() => router.push("/detail-notification")}
+              className="relative mr-4"
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={24}
+                color="#374151"
+              />
+              {notiList.length > 0 && (
+                <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 flex items-center justify-center">
+                  <Text className="text-white text-xs font-psemibold">
+                    {notiList.length}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ margin: width * 0.05 }}>

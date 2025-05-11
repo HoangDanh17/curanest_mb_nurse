@@ -6,6 +6,7 @@ import {
   TextInput,
   Modal,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import React, { useCallback, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,8 +21,11 @@ import appointmentApiRequest from "@/app/api/appointmentApi";
 import { addMinutes, format } from "date-fns";
 import { Patient } from "@/types/patient";
 import patientApiRequest from "@/app/api/patientApi";
-import * as Location from "expo-location";
 import Toast from "react-native-toast-message";
+import { Ionicons } from "@expo/vector-icons";
+import { FeedbackType } from "@/types/nurse";
+import nurseApiRequest from "@/app/api/nurseApi";
+import { Platform } from "react-native";
 
 const DetailAppointmentScreen = () => {
   const { id, packageId, patientId, date, status, locationGPS } =
@@ -32,6 +36,8 @@ const DetailAppointmentScreen = () => {
   const [patientList, setPatientList] = useState<Patient>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [medicalReport, setMedicalReport] = useState<GetReport>();
+  const [feedbackData, setFeedbackData] = useState<FeedbackType | null>(null);
+  const [isFeedbackLoading, setIsFeedbackLoading] = useState<boolean>(false);
 
   const areAllTasksDone = () => {
     if (!appointments?.tasks || appointments.tasks.length === 0) {
@@ -53,9 +59,7 @@ const DetailAppointmentScreen = () => {
     try {
       const response = await appointmentApiRequest.getMedicalReport(String(id));
       setMedicalReport(response.payload.data);
-    } catch (error) {
-      console.error("Error fetching medical report:", error);
-    }
+    } catch (error) {}
   }
 
   async function fetchAppointmentDetail() {
@@ -70,16 +74,29 @@ const DetailAppointmentScreen = () => {
     }
   }
 
+  async function fetchFeedback(medicalId: string) {
+    try {
+      setIsFeedbackLoading(true);
+      const response = await nurseApiRequest.getFeedback(medicalId);
+      const data = response.payload.data;
+      if (Object.keys(data).length === 0) {
+        setFeedbackData(null);
+      } else {
+        setFeedbackData(data);
+      }
+    } catch (error) {
+      setFeedbackData(null);
+    } finally {
+      setIsFeedbackLoading(false);
+    }
+  }
+
   const fetchLocation = async () => {
     try {
       setIsLoading(true);
-      let location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      const locationGPS = `${location.coords.latitude},${location.coords.longitude}`;
+
       let body: StartAppointment = {
         "appointment-id": String(id),
-        "origin-code": locationGPS,
       };
       const result = await appointmentApiRequest.startAppointment(body);
 
@@ -114,11 +131,78 @@ const DetailAppointmentScreen = () => {
       if (patientId) {
         fetchPatientList();
       }
-    }, [patientId, packageId, date])
+      if (status === "success" && medicalReport?.id) {
+        fetchFeedback(String(medicalReport.id));
+      }
+    }, [patientId, packageId, date, status, medicalReport?.id])
   );
 
   const handleStartAppointment = () => {
+    // const currentDate = format(new Date(), "dd/MM/yyyy");
+    // const appointmentDate = format(new Date(String(date)), "dd/MM/yyyy");
+
+    // if (currentDate !== appointmentDate) {
+    //   Toast.show({
+    //     type: "warning",
+    //     text1: "Lỗi",
+    //     text2: "Chỉ có thể bắt đầu lịch hẹn vào đúng ngày đã đặt!",
+    //     position: "top",
+    //   });
+    //   return;
+    // }
+
     fetchLocation();
+  };
+
+  const handleOpenGoogleMaps = async () => {
+    try {
+      if (!locationGPS) {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: "Không có thông tin vị trí điểm đến!",
+          position: "top",
+        });
+        return;
+      }
+
+      const [destLat, destLng] = String(locationGPS)
+        .split(",")
+        .map((coord: any) => parseFloat(coord.trim()));
+
+      if (isNaN(destLat) || isNaN(destLng)) {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: "Định dạng vị trí điểm đến không hợp lệ!",
+          position: "top",
+        });
+        return;
+      }
+
+      const url = Platform.select({
+        ios: `comgooglemaps://?daddr=${destLat},${destLng}&directionsmode=driving`,
+        android: `google.navigation:q=${destLat},${destLng}&mode=d`,
+        default: `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`,
+      });
+
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      } else {
+        await Linking.openURL(
+          `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`
+        );
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể mở Google Maps!",
+        position: "top",
+      });
+      console.error("Error opening Google Maps:", error);
+    }
   };
 
   const getStatusStyle = (status: string) => {
@@ -197,7 +281,6 @@ const DetailAppointmentScreen = () => {
       });
       router.back();
     } catch (error: any) {
-      console.log("🚀 ~ confirmSubmit ~ error:", error);
       Toast.show({
         type: "error",
         text1: "Lỗi",
@@ -372,116 +455,160 @@ const DetailAppointmentScreen = () => {
           </View>
         </View>
 
-        {status !== "upcoming" && (
-          <TouchableOpacity
-            className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#bd4ada] ${
-              isLoading ? "opacity-50" : ""
-            }`}
-            onPress={handleStartAppointment}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <Text className="text-white font-pmedium text-center break-words items-center">
-                Bắt đầu đến điểm hẹn
-              </Text>
+        <View className="flex-1">
+          {status === "confirmed" &&
+            appointments?.package["payment-status"] === "paid" && (
+              <TouchableOpacity
+                className={`flex-1 py-4 mt-4 rounded-lg bg-[#bd4ada] items-center justify-center ${
+                  isLoading ? "opacity-50" : ""
+                }`}
+                onPress={handleStartAppointment}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text className="text-white font-pmedium">
+                    Bắt đầu đến điểm hẹn
+                  </Text>
+                )}
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
-        )}
 
-        {status === "upcoming" && (
-          <TouchableOpacity
-            className={`flex-1 px-6 py-4 mt-4 rounded-lg bg-[#74b2f1]`}
-            onPress={() =>
-              router.push({
-                pathname: "/map",
-                params: {
-                  id: String(id),
-                  locationGPS: String(locationGPS),
-                },
-              })
-            }
-          >
-            <Text className="text-white font-pmedium text-center break-words items-center">
-              📍 Map
-            </Text>
-          </TouchableOpacity>
-        )}
-        <View className="mt-6 mb-20">
-          {status === "upcoming" && (
+          {status !== "confirmed" && (
             <TouchableOpacity
-              className={`flex-1 px-6 py-4 rounded-lg ${
-                areAllTasksDone() ? "bg-green-500" : "bg-[#64CBDB]"
-              }`}
-              onPress={() =>
-                router.push({
-                  pathname: "/report-appointment/[id]",
-                  params: {
-                    id: String(id),
-                    listTask: JSON.stringify(appointments?.tasks),
-                  },
-                })
-              }
+              className="flex-1 px-auto py-4 mt-4 rounded-lg bg-[#74b2f1] items-center"
+              onPress={handleOpenGoogleMaps}
             >
-              <Text className="text-white font-pmedium text-center break-words items-center">
-                📋 Báo cáo tiến trình task
-              </Text>
+              <Text className="text-white font-pmedium">📍 Map</Text>
             </TouchableOpacity>
           )}
 
-          {status === "upcoming" && (
-            <View className="mt-6">
-              <View className="flex-row items-center mb-4 gap-2">
-                <Text className="text-xl font-psemibold text-gray-700">
-                  Báo cáo -
+          <View className="mt-6 mb-20">
+            {status !== "confirmed" && (
+              <TouchableOpacity
+                className={`flex-1 py-4 rounded-lg justify-center items-center ${
+                  areAllTasksDone() ? "bg-green-400" : "bg-[#64CBDB]"
+                }`}
+                onPress={() =>
+                  router.push({
+                    pathname: "/report-appointment/[id]",
+                    params: {
+                      id: String(id),
+                      listTask: JSON.stringify(appointments?.tasks),
+                    },
+                  })
+                }
+              >
+                <Text className="text-white font-pmedium">
+                  📋 Báo cáo tiến trình task
                 </Text>
-                {medicalReport?.["nursing-report"] && (
-                  <View className="bg-amber-100  rounded-2xl px-4 py-2">
-                    <Text className="text-amber-500 font-psemibold">
-                      Đợi staff xác nhận
+              </TouchableOpacity>
+            )}
+
+            {status !== "confirmed" && (
+              <View className="mt-6">
+                <View className="flex-row items-center mb-4 gap-2">
+                  <Text className="text-xl font-psemibold text-gray-700">
+                    Báo cáo -
+                  </Text>
+                  {medicalReport?.["nursing-report"] &&
+                    medicalReport.status !== "done" && (
+                      <View className="bg-amber-100 rounded-2xl px-4 py-2">
+                        <Text className="text-amber-500 font-psemibold">
+                          Đợi staff xác nhận
+                        </Text>
+                      </View>
+                    )}
+                  {medicalReport?.["nursing-report"] &&
+                    medicalReport.status === "done" && (
+                      <View className="bg-emerald-100 rounded-2xl px-4 py-2">
+                        <Text className="text-emerald-500 font-psemibold">
+                          Hoàn thành
+                        </Text>
+                      </View>
+                    )}
+                </View>
+                {!appointments?.tasks || appointments.tasks.length === 0 ? (
+                  <Text className="text-gray-500 text-center">
+                    Không có nhiệm vụ nào để báo cáo.
+                  </Text>
+                ) : medicalReport?.["nursing-report"] ? (
+                  <View>
+                    <Text className="text-gray-500 font-pmedium break-words border rounded-lg p-2">
+                      {medicalReport["nursing-report"]}
                     </Text>
+                    {status === "success" && (
+                      <View className="mt-4">
+                        {isFeedbackLoading ? (
+                          <ActivityIndicator size="small" color="#64CBDB" />
+                        ) : feedbackData ? (
+                          <View className="p-4 bg-gray-100 rounded-lg">
+                            <Text className="text-lg font-psemibold text-gray-700 mb-2">
+                              Đánh giá của bệnh nhân
+                            </Text>
+                            <View className="flex-row mb-2">
+                              {[...Array(5)].map((_, i) => (
+                                <Ionicons
+                                  key={i}
+                                  name={
+                                    i < parseInt(feedbackData.star)
+                                      ? "star"
+                                      : "star-outline"
+                                  }
+                                  size={20}
+                                  color={
+                                    i < parseInt(feedbackData.star)
+                                      ? "#FFD700"
+                                      : "#A0A0A0"
+                                  }
+                                />
+                              ))}
+                            </View>
+                            <Text className="text-gray-600 font-pmedium">
+                              {feedbackData.content ||
+                                "Không có nội dung phản hồi"}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text className="text-gray-500 font-pmedium">
+                            Không có đánh giá từ bệnh nhân.
+                          </Text>
+                        )}
+                      </View>
+                    )}
                   </View>
+                ) : (
+                  <>
+                    <TextInput
+                      placeholder="Nhập nội dung báo cáo..."
+                      value={reportText}
+                      onChangeText={setReportText}
+                      multiline
+                      numberOfLines={4}
+                      className="border rounded-lg p-2 mt-2 h-32 font-psemibold text-gray-500"
+                      style={{ textAlignVertical: "top", textAlign: "left" }}
+                    />
+                    <TouchableOpacity
+                      className={`mt-4 px-6 py-4 rounded-lg ${
+                        areAllTasksDone() ? "bg-emerald-400" : "bg-teal-400"
+                      }`}
+                      onPress={handleSubmitReport}
+                      disabled={!areAllTasksDone()}
+                    >
+                      <Text
+                        className={`${
+                          areAllTasksDone() ? "text-white" : "text-white"
+                        } font-pbold text-center`}
+                      >
+                        ✔ Xác nhận hoàn thành
+                      </Text>
+                    </TouchableOpacity>
+                  </>
                 )}
               </View>
-              {!appointments?.tasks || appointments.tasks.length === 0 ? (
-                <Text className="text-gray-500 text-center">
-                  Không có nhiệm vụ nào để báo cáo.
-                </Text>
-              ) : medicalReport?.["nursing-report"] ? (
-                <Text className="text-gray-500 font-pmedium break-words border rounded-lg p-2">
-                  {medicalReport["nursing-report"]}
-                </Text>
-              ) : (
-                <>
-                  <TextInput
-                    placeholder="Nhập nội dung báo cáo..."
-                    value={reportText}
-                    onChangeText={setReportText}
-                    multiline
-                    numberOfLines={4}
-                    className="border rounded-lg p-2 mt-2 h-32 font-psemibold text-gray-500"
-                    style={{ textAlignVertical: "top", textAlign: "left" }}
-                  />
-                  <TouchableOpacity
-                    className={`mt-4 px-6 py-4 rounded-lg ${
-                      areAllTasksDone() ? "bg-emerald-400" : "bg-teal-400"
-                    }`}
-                    onPress={handleSubmitReport}
-                    disabled={!areAllTasksDone()}
-                  >
-                    <Text
-                      className={`${
-                        areAllTasksDone() ? "text-white" : "text-gray-500"
-                      } font-pbold text-center`}
-                    >
-                      ✔ Xác nhận hoàn thành
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          )}
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -504,7 +631,7 @@ const DetailAppointmentScreen = () => {
                 className="flex-1 px-4 py-2 bg-gray-300 rounded-lg mr-2"
                 onPress={() => setIsModalVisible(false)}
               >
-                <Text className="text-gray-800 font-pmedium text-center">
+                <Text className="text-gray-800 font-pmedium izol-text-center">
                   Hủy
                 </Text>
               </TouchableOpacity>

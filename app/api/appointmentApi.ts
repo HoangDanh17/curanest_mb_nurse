@@ -31,8 +31,8 @@ const appointmentApiRequest = {
     ),
   startAppointment: (body: StartAppointment) =>
     http.patch<CreateAppointmentRes>(
-      `appointments/${body["appointment-id"]}/update-status-upcoming?origin-code=${body["origin-code"]}`,
-      body,
+      `appointments/${body["appointment-id"]}/update-status-upcoming}`,
+      null,
       {
         apiPrefix: "appointment",
       }
