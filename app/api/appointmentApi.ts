@@ -29,9 +29,9 @@ const appointmentApiRequest = {
       `cuspackage?cus-package-id=${packageId}&est-date=${date}`,
       { apiPrefix: "appointment" }
     ),
-  startAppointment: (body: StartAppointment) =>
+  startAppointment: (id:string) =>
     http.patch<CreateAppointmentRes>(
-      `appointments/${body["appointment-id"]}/update-status-upcoming}`,
+      `appointments/${id}/update-status-upcoming`,
       null,
       {
         apiPrefix: "appointment",

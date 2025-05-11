@@ -94,12 +94,7 @@ const DetailAppointmentScreen = () => {
   const fetchLocation = async () => {
     try {
       setIsLoading(true);
-
-      let body: StartAppointment = {
-        "appointment-id": String(id),
-      };
-      const result = await appointmentApiRequest.startAppointment(body);
-
+      const result = await appointmentApiRequest.startAppointment(String(id));
       Toast.show({
         type: "success",
         text1: "Thành công",

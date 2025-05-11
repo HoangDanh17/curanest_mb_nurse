@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/images/logo-app.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.danhths.curanest_mb_nurse",
+      "package": "com.danh123456.curanest_mb_nurse",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
@@ -60,7 +60,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "1b79f83b-c1c5-44a2-8093-e66766455884"
+        "projectId": "5076f96c-083e-49c4-a725-77d40210d9a4"
       }
     }
   }

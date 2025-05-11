@@ -174,14 +174,25 @@ const LoginScreen: React.FC = () => {
   );
   const [token1, setToken] = useState<string>();
   const [showTooltip, setShowTooltip] = useState<boolean>(false);
+  const [isTokenLoading, setIsTokenLoading] = useState<boolean>(false);
 
   const handleGetToken = async () => {
-    const pushToken = await AsyncStorage.getItem("expoPushToken");
-    setToken(String(pushToken));
+    try {
+      setIsTokenLoading(true);
+      const token = await AsyncStorage.getItem("expoPushToken");
+      if (token) {
+        setToken(String(token));
+      } else {
+        console.warn("No expoPushToken found in AsyncStorage");
+        setToken("");
+      }
+    } catch (error) {
+    } finally {
+      setIsTokenLoading(false);
+    }
   };
 
   useEffect(() => {
-    handleGetToken();
     fadeIn.value = withTiming(1, { duration: 1000 });
     slideIn.value = withTiming(0, { duration: 800 });
     scale.value = withSpring(1, { damping: 15 });
@@ -194,6 +205,7 @@ const LoginScreen: React.FC = () => {
       -1,
       true
     );
+    handleGetToken();
   }, []);
 
   const handleLongPress = () => {
@@ -261,7 +273,7 @@ const LoginScreen: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [phone, password]);
+  }, [phone, password, token1]);
 
   const mainContainerStyle = useAnimatedStyle(() => {
     return {
@@ -300,8 +312,13 @@ const LoginScreen: React.FC = () => {
                 onLongPress={handleLongPress}
                 onPressOut={handlePressOut}
                 activeOpacity={0.7}
+                disabled={isTokenLoading}
               >
-                <MaterialIcons name="info" size={24} color="#2D3748" />
+                <MaterialIcons
+                  name="info"
+                  size={24}
+                  color={isTokenLoading ? "#A0AEC0" : "#2D3748"}
+                />
               </TouchableOpacity>
               {showTooltip && (
                 <AnimatedView
@@ -309,12 +326,13 @@ const LoginScreen: React.FC = () => {
                   className="absolute top-0 left-8 bg-[#2D3748] rounded-lg p-2 min-w-[200px]"
                 >
                   <Text className="text-white text-sm font-pmedium">
-                    {token1 || "No token available"}
+                    {isTokenLoading
+                      ? "Đang tải token..."
+                      : token1 || "No token available"}
                   </Text>
                 </AnimatedView>
               )}
             </View>
-
             <AnimatedView className="items-center mb-10" style={logoStyle}>
               <Image
                 source={LogoApp}

@@ -10,20 +10,21 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Toast from 'react-native-toast-message';
+import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/ToastConfig";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
+    shouldShowBanner: true,
     shouldSetBadge: false,
   }),
 });
 
 SplashScreen.preventAutoHideAsync();
 
-async function registerForPushNotificationsAsync() {
+export async function registerForPushNotificationsAsync() {
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("curanest_channel", {
       name: "CuraNest Notifications",
@@ -53,7 +54,6 @@ async function registerForPushNotificationsAsync() {
     Constants?.expoConfig?.extra?.eas?.projectId ??
     Constants?.easConfig?.projectId;
   if (!projectId) {
-    console.error("Project ID not found");
     return;
   }
 
@@ -62,6 +62,7 @@ async function registerForPushNotificationsAsync() {
       await Notifications.getExpoPushTokenAsync({ projectId })
     ).data;
     await AsyncStorage.setItem("expoPushToken", pushTokenString);
+
     return pushTokenString;
   } catch (e) {
     console.error("Error getting push token:", e);
@@ -149,6 +150,7 @@ export default function RootLayout() {
 
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
+        AsyncStorage.setItem("expoPushToken", token);
       }
     });
 
@@ -202,10 +204,7 @@ export default function RootLayout() {
           name="report-appointment/[id]"
           options={{ headerShown: false }}
         />
-        <Stack.Screen
-          name="map"
-          options={{ headerShown: false }}
-        />
+        <Stack.Screen name="map" options={{ headerShown: false }} />
         <Stack.Screen name="index" options={{ headerShown: false }} />
       </Stack>
       <StatusBar
@@ -213,7 +212,7 @@ export default function RootLayout() {
         backgroundColor="transparent"
         barStyle="dark-content"
       />
-      <Toast config={toastConfig}/>
+      <Toast config={toastConfig} />
     </Provider>
   );
 }
