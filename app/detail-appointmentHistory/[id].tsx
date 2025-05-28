@@ -7,12 +7,16 @@ import {
   Modal,
   ActivityIndicator,
   Linking,
-  BackHandler,
 } from "react-native";
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import HeaderBack from "@/components/HeaderBack";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { AppointmentDetail, GetReport } from "@/types/appointment";
+import {
+  AppointmentDetail,
+  GetReport,
+  StartAppointment,
+} from "@/types/appointment";
 import appointmentApiRequest from "@/app/api/appointmentApi";
 import { addMinutes, format } from "date-fns";
 import { Patient } from "@/types/patient";
@@ -127,23 +131,6 @@ const DetailAppointmentScreen = () => {
       }
     }, [patientId, packageId, date, status, medicalReport?.id])
   );
-
-  useEffect(() => {
-    const handleBackPress = () => {
-      router.push("/(tabs)/schedule");
-      return true;
-    };
-
-    if (Platform.OS === "android") {
-      BackHandler.addEventListener("hardwareBackPress", handleBackPress);
-    }
-
-    return () => {
-      if (Platform.OS === "android") {
-        BackHandler.removeEventListener("hardwareBackPress", handleBackPress);
-      }
-    };
-  }, []);
 
   const handleStartAppointment = () => {
     const currentDate = format(new Date(), "dd/MM/yyyy");
@@ -301,12 +288,7 @@ const DetailAppointmentScreen = () => {
   return (
     <SafeAreaView className="bg-white p-4">
       <ScrollView showsVerticalScrollIndicator={false}>
-        <TouchableOpacity
-          onPress={() => router.push("/(tabs)/schedule")}
-          className="rounded-full mt-2"
-        >
-          <Ionicons name="chevron-back" size={30} color="#64C1DB" />
-        </TouchableOpacity>
+        <HeaderBack />
 
         <View className="mt-4 p-6 bg-white rounded-2xl shadow-lg border border-gray-100">
           <Text className="text-xl font-psemibold mb-4 text-blue-600 text-center">

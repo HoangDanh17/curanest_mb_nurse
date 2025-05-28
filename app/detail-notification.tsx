@@ -15,7 +15,8 @@ import HeaderBack from "@/components/HeaderBack";
 import { useProvider } from "@/app/provider";
 import { NotiListType } from "@/types/noti";
 import notiApiRequest from "@/app/api/notiApi";
-
+import { fetchAppointmentDetail } from "@/app/_layout";
+type Route = "/(tabs)/home" | "/detail-appointment/[id]";
 const NotificationsScreen = () => {
   const { userData } = useProvider();
   const [notiList, setNotiList] = useState<NotiListType[]>([]);
@@ -33,7 +34,7 @@ const NotificationsScreen = () => {
     }
   }
 
-  const markAsRead = async (id: string, route: RelativePathString) => {
+  const markAsRead = async (id: string, subId: string, route: Route) => {
     try {
       await notiApiRequest.updateNoti(id);
       setNotiList((prev) =>
@@ -43,7 +44,21 @@ const NotificationsScreen = () => {
             : noti
         )
       );
-      if (route) {
+      const result = await fetchAppointmentDetail(subId);
+      if (route !== "/(tabs)/home" && result) {
+        router.push({
+          pathname: route,
+          params: {
+            id: result.id,
+            packageId: result["cuspackage-id"] || "",
+            nurseId: result["nursing-id"] || "",
+            patientId: result["patient-id"] || "",
+            date: result["est-date"] || "",
+            locationGPS: result["patient-lat-lng"] || "",
+            status: result.status || "",
+          },
+        });
+      } else {
         router.push(route);
       }
     } catch (error) {
@@ -54,7 +69,7 @@ const NotificationsScreen = () => {
   const renderNotificationItem = ({ item }: { item: NotiListType }) => {
     return (
       <Pressable
-        onPress={() => markAsRead(item.id, item.route)}
+        onPress={() => markAsRead(item.id, item["sub-id"], item.route)}
         className="mx-4 my-2 p-4 bg-white rounded-lg shadow-md flex-row items-center"
       >
         <View className="mr-4">

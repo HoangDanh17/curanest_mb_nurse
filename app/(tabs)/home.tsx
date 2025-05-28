@@ -299,6 +299,7 @@ const HomeScreen = () => {
         ) : (
           <FlatList
             data={appointments}
+            removeClippedSubviews={false}
             renderItem={renderAppointmentItem}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}

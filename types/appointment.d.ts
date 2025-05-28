@@ -6,7 +6,7 @@ export type Status =
   | "confirmed"
   | "success"
   | "upcoming"
-  | "changed";
+  | "cancel";
 
 export interface StatusStyle {
   backgroundColor?: string;
@@ -56,6 +56,7 @@ export type AppointmentList = {
   "est-date": string;
   "act-date": string;
   status: Status;
+  "is-paid": boolean;
   "total-est-duration": number;
   "created-at": string;
 };
@@ -79,6 +80,11 @@ export type AppointmentListRes = {
   filters: {
     "service-id": string;
   };
+};
+
+export type AppointmentNotiRes = {
+  status: number;
+  data: AppointmentList;
 };
 
 export type AppointmentDetail = {

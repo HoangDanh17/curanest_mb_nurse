@@ -12,10 +12,8 @@ import { useSharedValue } from "react-native-reanimated";
 import { useFocusEffect, useRouter } from "expo-router";
 import SystemOptionScreen from "@/components/createAppointment/SystemOptionScreen";
 import { AppointmentList, Status } from "@/types/appointment";
-import { UserData } from "@/app/(auth)/login";
 import { format } from "date-fns";
 import appointmentApiRequest from "@/app/api/appointmentApi";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useProvider } from "@/app/provider";
 
 export interface Appointment {
@@ -44,8 +42,8 @@ const mapStatus = (apiStatus: string): Status => {
       return "success";
     case "upcoming":
       return "upcoming";
-    case "changed":
-      return "changed";
+    case "cancel":
+      return "cancel";
     default:
       return "waiting";
   }
@@ -124,7 +122,6 @@ const AppointmentScreen = () => {
     handleDateSelect(today);
   }, []);
 
-  
   useFocusEffect(
     useCallback(() => {
       if (userData?.id) {
@@ -194,6 +191,7 @@ const AppointmentScreen = () => {
       setLoadingTime(null);
       return;
     }
+    
     if (!userData?.id) {
       console.error("data.id is undefined");
       setLoadingTime(null);
@@ -319,10 +317,10 @@ const AppointmentScreen = () => {
         border: "border-red-400",
         text: "text-red-800",
       },
-      changed: {
-        bg: "bg-violet-50",
-        border: "border-violet-400",
-        text: "text-violet-800",
+      cancel: {
+        bg: "bg-red-50",
+        border: "border-red-400",
+        text: "text-red-800",
       },
     }[item.status];
 
@@ -369,7 +367,7 @@ const AppointmentScreen = () => {
                       {item.status === "confirmed" && "Đã xác nhận"}
                       {item.status === "success" && "Hoàn thành"}
                       {item.status === "upcoming" && "Sắp tới"}
-                      {item.status === "changed" && "Chờ đổi điều dưỡng"}
+                      {item.status === "cancel" && "Đã hủy"}
                     </Text>
                   </View>
                 </View>

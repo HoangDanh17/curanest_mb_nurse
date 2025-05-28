@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -27,6 +27,9 @@ import Reanimated, {
 import LogoApp from "@/assets/images/logo-app.png";
 import authApiRequest from "@/app/api/authApi";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import * as Device from "expo-device";
 
 const { width } = Dimensions.get("window");
 
@@ -155,6 +158,68 @@ const Input: React.FC<InputProps> = ({
   );
 };
 
+export async function registerForPushNotificationsAsync() {
+  const issues: string[] = [];
+
+  if (Platform.OS === "android") {
+    try {
+      await Notifications.setNotificationChannelAsync("curanest_channel", {
+        name: "CuraNest Notifications",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#4A90E2",
+      });
+    } catch (e: any) {
+      issues.push("Failed to set Android notification channel: " + e.message);
+    }
+  }
+
+  if (!Device.isDevice) {
+    issues.push(
+      "App is running on a simulator/emulator. Push notifications require a physical device."
+    );
+    return { token: null, issues };
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  if (existingStatus !== "granted") {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+  if (finalStatus !== "granted") {
+    issues.push(
+      "Notification permissions not granted. Please enable notifications in device settings."
+    );
+    return { token: null, issues };
+  }
+
+  const projectId =
+    Constants?.expoConfig?.extra?.eas?.projectId ??
+    Constants?.easConfig?.projectId;
+  if (!projectId) {
+    issues.push(
+      "Missing projectId in app.json or app.config.js. Please configure expo.extra.eas.projectId."
+    );
+    return { token: null, issues };
+  }
+
+  try {
+    const pushTokenString = (
+      await Notifications.getExpoPushTokenAsync({ projectId })
+    ).data;
+    try {
+      await AsyncStorage.setItem("expoPushToken", pushTokenString);
+    } catch (e: any) {
+      issues.push("Failed to store push token in AsyncStorage: " + e.message);
+    }
+    return { token: pushTokenString, issues };
+  } catch (e: any) {
+    issues.push("Failed to fetch push token: " + e.message);
+    return { token: null, issues };
+  }
+}
+
 const LoginScreen: React.FC = () => {
   const fadeIn = useSharedValue(0);
   const slideIn = useSharedValue(width);
@@ -172,25 +237,32 @@ const LoginScreen: React.FC = () => {
   const [errors, setErrors] = useState<{ phone?: string; password?: string }>(
     {}
   );
-  const [token1, setToken] = useState<string>();
+  const [token1, setToken] = useState<string | null>(null);
+  const [issues, setIssues] = useState<string[]>([]);
   const [showTooltip, setShowTooltip] = useState<boolean>(false);
   const [isTokenLoading, setIsTokenLoading] = useState<boolean>(false);
+  const hasFetchedToken = useRef(false);
 
-  const handleGetToken = async () => {
+  const handleGetToken = useCallback(async () => {
+    if (hasFetchedToken.current) {
+      return;
+    }
+    hasFetchedToken.current = true;
     try {
       setIsTokenLoading(true);
-      const token = await AsyncStorage.getItem("expoPushToken");
-      if (token) {
-        setToken(String(token));
-      } else {
-        console.warn("No expoPushToken found in AsyncStorage");
-        setToken("");
+      const result = await registerForPushNotificationsAsync();
+      setToken(result.token);
+      setIssues(result.issues);
+      if (!result.token) {
+        console.warn("No expoPushToken retrieved. Issues:", result.issues);
       }
-    } catch (error) {
+    } catch (error: any) {
+      setToken(null);
+      setIssues(["Unexpected error retrieving token: " + error.message]);
     } finally {
       setIsTokenLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fadeIn.value = withTiming(1, { duration: 1000 });
@@ -205,6 +277,7 @@ const LoginScreen: React.FC = () => {
       -1,
       true
     );
+
     handleGetToken();
   }, []);
 
@@ -243,10 +316,9 @@ const LoginScreen: React.FC = () => {
       const form = {
         password: password,
         "phone-number": phone,
-        "push-token": token1,
+        "push-token": token1 || "",
       };
       const response = await authApiRequest.login(form);
-
       const userRole = response.payload.data["account-info"].role;
       if (userRole === "relatives") {
         Alert.alert(
@@ -265,7 +337,7 @@ const LoginScreen: React.FC = () => {
       await AsyncStorage.setItem("accessToken", token);
       router.push("/(tabs)/home");
     } catch (error: any) {
-      if (error.payload.error.reason_field) {
+      if (error.payload?.error?.reason_field) {
         Alert.alert("Đăng nhập thất bại", error.payload.error.reason_field);
       } else {
         Alert.alert("Đăng nhập thất bại", "Có lỗi xảy ra. Vui lòng thử lại.");
@@ -306,7 +378,6 @@ const LoginScreen: React.FC = () => {
           style={mainContainerStyle}
         >
           <View className="w-full max-w-md bg-white rounded-[40px] shadow-lg p-8 relative">
-            {/* Icon and Tooltip in Top-Left Corner of Logo */}
             <View className="absolute top-4 left-4 z-10">
               <TouchableOpacity
                 onLongPress={handleLongPress}
@@ -323,13 +394,37 @@ const LoginScreen: React.FC = () => {
               {showTooltip && (
                 <AnimatedView
                   style={[tooltipStyle]}
-                  className="absolute top-0 left-8 bg-[#2D3748] rounded-lg p-2 min-w-[200px]"
+                  className="absolute top-0 left-8 bg-[#2D3748] rounded-lg p-2 min-w-[200px] max-w-[300px]"
                 >
-                  <Text className="text-white text-sm font-pmedium">
-                    {isTokenLoading
-                      ? "Đang tải token..."
-                      : token1 || "No token available"}
-                  </Text>
+                  {isTokenLoading ? (
+                    <Text className="text-white text-sm font-pmedium">
+                      Đang tải token...
+                    </Text>
+                  ) : token1 ? (
+                    <Text className="text-white text-sm font-pmedium">
+                      Token: {token1}
+                    </Text>
+                  ) : (
+                    <View>
+                      <Text className="text-white text-sm font-pmedium mb-2">
+                        No token available. Issues:
+                      </Text>
+                      {issues.length > 0 ? (
+                        issues.map((issue, index) => (
+                          <Text
+                            key={index}
+                            className="text-white text-xs font-pmedium mb-1"
+                          >
+                            - {issue}
+                          </Text>
+                        ))
+                      ) : (
+                        <Text className="text-white text-xs font-pmedium">
+                          - Unknown error occurred.
+                        </Text>
+                      )}
+                    </View>
+                  )}
                 </AnimatedView>
               )}
             </View>

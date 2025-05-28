@@ -2,10 +2,10 @@ import http from "@/lib/http";
 import {
   AppointmentDetailRes,
   AppointmentListRes,
+  AppointmentNotiRes,
   CreateAppointment,
   CreateAppointmentRes,
   GetReportRes,
-  StartAppointment,
   SubmitReport,
   SubmitReportRes,
 } from "@/types/appointment";
@@ -20,8 +20,12 @@ const appointmentApiRequest = {
       `appointments?nursing-id=${id}&est-date-from=${today}&est-date-to=${nextday}`,
       { apiPrefix: "appointment" }
     ),
+  getAppointmentNoti: (id: string) =>
+    http.get<AppointmentListRes>(`appointments?id=${id}`, {
+      apiPrefix: "appointment",
+    }),
   getListAppointmentHistory: (id: string) =>
-    http.get<AppointmentListRes>(`appointments?nurse-id=${id}`, {
+    http.get<AppointmentListRes>(`appointments?nursing-id=${id}`, {
       apiPrefix: "appointment",
     }),
   getAppointmentDetail: (packageId: string, date: string) =>
@@ -29,7 +33,7 @@ const appointmentApiRequest = {
       `cuspackage?cus-package-id=${packageId}&est-date=${date}`,
       { apiPrefix: "appointment" }
     ),
-  startAppointment: (id:string) =>
+  startAppointment: (id: string) =>
     http.patch<CreateAppointmentRes>(
       `appointments/${id}/update-status-upcoming`,
       null,

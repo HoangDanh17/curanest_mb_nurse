@@ -121,6 +121,7 @@ const SystemOptionScreen: React.FC<SystemOptionScreenProps> = ({
                 renderItem={renderTimeItem}
                 keyExtractor={(item) => item.id}
                 showsVerticalScrollIndicator={false}
+                removeClippedSubviews={false}
                 contentContainerStyle={{
                   paddingHorizontal: 4,
                   paddingBottom: 20,

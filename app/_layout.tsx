@@ -12,6 +12,8 @@ import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/ToastConfig";
+import appointmentApiRequest from "@/app/api/appointmentApi";
+import { AppointmentList } from "@/types/appointment";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -62,7 +64,6 @@ export async function registerForPushNotificationsAsync() {
       await Notifications.getExpoPushTokenAsync({ projectId })
     ).data;
     await AsyncStorage.setItem("expoPushToken", pushTokenString);
-
     return pushTokenString;
   } catch (e) {
     console.error("Error getting push token:", e);
@@ -70,7 +71,19 @@ export async function registerForPushNotificationsAsync() {
   }
 }
 
-type AppScreen = "/(tabs)/schedule" | "/(auth)/login";
+type AppScreen = "/(tabs)/schedule" | "/(auth)/login" | "/(tabs)/home";
+
+export async function fetchAppointmentDetail(
+  id: string
+): Promise<AppointmentList | null> {
+  try {
+    const response = await appointmentApiRequest.getAppointmentNoti(id);
+    return response.payload.data[0];
+  } catch (error) {
+    console.error("Error fetching appointment detail:", error);
+    return null;
+  }
+}
 
 export default function RootLayout() {
   const [fontsLoaded, error] = useFonts({
@@ -86,6 +99,7 @@ export default function RootLayout() {
   });
 
   const [isMounted, setIsMounted] = useState(false);
+  const [isInitialNavigationDone, setIsInitialNavigationDone] = useState(false);
   const notificationListener = useRef<Notifications.Subscription>();
   const responseListener = useRef<Notifications.Subscription>();
   const appState = useRef(AppState.currentState);
@@ -100,32 +114,58 @@ export default function RootLayout() {
 
   useEffect(() => {
     const checkAuthStatus = async () => {
-      if (!isMounted) {
-        return;
-      }
+      if (!isMounted || isInitialNavigationDone) return;
+
       try {
         const accessToken = await AsyncStorage.getItem("accessToken");
         if (accessToken) {
-          router.navigate("/(tabs)/home");
+          router.replace("/(tabs)/home");
         } else {
-          router.navigate("/(auth)/login");
+          router.replace("/(auth)/login");
         }
+        setIsInitialNavigationDone(true);
       } catch (error) {
-        router.navigate("/(auth)/login");
+        router.replace("/(auth)/login");
+        setIsInitialNavigationDone(true);
       }
     };
 
-    const handleNotificationNavigation = async (screen: AppScreen) => {
-      if (!isMounted) {
-        return;
-      }
+    async function handleNotificationNavigation(screen: AppScreen, id: string) {
+      if (!isMounted) return;
+
       try {
         const accessToken = await AsyncStorage.getItem("accessToken");
-        router.navigate(accessToken ? screen : "/(auth)/login");
+        if (accessToken) {
+          if (screen === "/(tabs)/home") {
+            router.replace("/(tabs)/home");
+          } else {
+            const appointment = await fetchAppointmentDetail(id);
+            if (appointment) {
+              router.replace({
+                pathname: screen,
+                params: {
+                  id: appointment.id,
+                  packageId: appointment["cuspackage-id"] || "",
+                  nurseId: appointment["nursing-id"] || "",
+                  patientId: appointment["patient-id"] || "",
+                  date: appointment["est-date"] || "",
+                  locationGPS: appointment["patient-lat-lng"] || "",
+                  status: appointment.status || "",
+                },
+              });
+            } else {
+              router.replace("/(tabs)/home");
+            }
+          }
+        } else {
+          router.replace("/(auth)/login");
+        }
+        setIsInitialNavigationDone(true);
       } catch (error) {
-        router.navigate("/(auth)/login");
+        router.replace("/(auth)/login");
+        setIsInitialNavigationDone(true);
       }
-    };
+    }
 
     const initializeApp = async () => {
       const response = await Notifications.getLastNotificationResponseAsync();
@@ -133,8 +173,11 @@ export default function RootLayout() {
         const screen = response.notification.request.content.data.screen as
           | AppScreen
           | undefined;
+        const id = response.notification.request.content.data[
+          "sub-id"
+        ] as string;
         if (screen) {
-          await handleNotificationNavigation(screen);
+          await handleNotificationNavigation(screen, id);
           return;
         }
       }
@@ -150,7 +193,6 @@ export default function RootLayout() {
 
     registerForPushNotificationsAsync().then((token) => {
       if (token) {
-        AsyncStorage.setItem("expoPushToken", token);
       }
     });
 
@@ -163,8 +205,11 @@ export default function RootLayout() {
           const screen = response.notification.request.content.data.screen as
             | AppScreen
             | undefined;
+          const id = response.notification.request.content.data[
+            "sub-id"
+          ] as string;
           if (screen) {
-            await handleNotificationNavigation(screen);
+            await handleNotificationNavigation(screen, id);
           }
         }
       );
@@ -194,6 +239,10 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         <Stack.Screen
           name="detail-appointment/[id]"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="detail-appointmentHistory/[id]"
           options={{ headerShown: false }}
         />
         <Stack.Screen

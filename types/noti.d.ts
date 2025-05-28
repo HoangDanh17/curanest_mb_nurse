@@ -1,6 +1,7 @@
 export type NotiListType = {
   id: string;
   "account-id": string;
+  "sub-id": string;
   content: string;
   route: RelativePathString;
   "created-at": string;

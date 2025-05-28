@@ -41,11 +41,11 @@ const STATUS_STYLES: Record<Status, StatusStyle> = {
     borderColor: "border-2 border-sky-500",
     label: "Đã xác nhận",
   },
-  changed: {
-    backgroundColor: "bg-violet-50",
-    textColor: "text-violet-600",
-    borderColor: "border-2 border-violet-500",
-    label: "Chờ đổi điều dưỡng",
+  cancel: {
+    backgroundColor: "bg-red-50",
+    textColor: "text-red-600",
+    borderColor: "border-2 border-red-500",
+    label: "Đã hủy",
   },
 };
 
@@ -89,7 +89,6 @@ const AppointmentHistoryScreen = () => {
     }, 2000);
   };
 
-  // Xử lý khi chọn ngày từ date picker
   const handleDateChange = (event: any, selected: Date | undefined) => {
     setShowDatePicker(Platform.OS === "ios");
     if (event.type === "dismissed" || !selected) {
@@ -98,19 +97,17 @@ const AppointmentHistoryScreen = () => {
     setSelectedDate(selected);
   };
 
-  // Xóa ngày đã chọn
   const clearDate = () => {
     setSelectedDate(null);
   };
 
-  // Format ngày hiển thị
   const formatDate = (date: Date | null) => {
     if (!date) return "Tìm theo ngày";
     return date.toLocaleDateString("vi-VN");
   };
 
   return (
-    <View className="flex-1 p-4 px-2 bg-white">
+    <View className="flex-1 p-4 px-2 pb-0 bg-white">
       <View className="flex-row justify-end mb-4 items-center gap-2">
         <Pressable
           className="border border-gray-300 rounded-lg px-4 py-2 bg-white"
@@ -204,7 +201,7 @@ const AppointmentHistoryScreen = () => {
                     className="bg-teal-400 px-4 py-2 rounded-lg"
                     onPress={() => {
                       router.push({
-                        pathname: "/detail-appointment/[id]",
+                        pathname: "/detail-appointmentHistory/[id]",
                         params: {
                           id: String(appointment.id),
                           packageId: appointment["cuspackage-id"],
